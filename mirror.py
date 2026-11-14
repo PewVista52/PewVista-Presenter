@@ -1612,11 +1612,22 @@ class MirrorDisplayController:
         Returns: None; retains the list for a controller created later.
         """
         self.hot_background_paths = list(background_paths or [])
-        if isinstance(self.secondary_controller, dict):
-            try:
-                self.secondary_controller["set_hot_backgrounds"](list(self.hot_background_paths))
-            except Exception:
-                pass
+        if not isinstance(self.secondary_controller, dict):
+            return
+        hot_paths = list(self.hot_background_paths)
+
+        def run_set_hot_backgrounds() -> None:
+            # Rebuilding OBS state renders a full-resolution frame; keep it off the Tk thread.
+            with self.secondary_push_lock:
+                controller = self.secondary_controller
+                if not isinstance(controller, dict) or hot_paths != self.hot_background_paths:
+                    return
+                try:
+                    controller["set_hot_backgrounds"](hot_paths)
+                except Exception:
+                    pass
+
+        threading.Thread(target=run_set_hot_backgrounds, name="MirrorSecondaryHotBackgrounds", daemon=True).start()
 
     def push_to_secondary(self) -> None:
         """What: Immediately synchronize visibility and live content to the OBS controller.

@@ -147,7 +147,10 @@ CONTENTS
   during Setup or the first time the live screen starts.
 - PewVista starts OBS quietly when it opens, so the first item appears
   quickly. OBS appears in the system tray, not as a window.
-- Keep the projector connected before turning the live screen on.
+- Keep the projector connected before turning the live screen on. If a
+  screen is plugged in, unplugged, or rearranged while PewVista is open,
+  the live screen moves to the new screen by itself within a few seconds
+  (Windows must be set to Extend, not Duplicate).
 - Settings > Secondary Screen sets the font, outline size, text color,
   and key size for the live screen.
 - Without a license, the live screen shows a red NOT LICENSED marking

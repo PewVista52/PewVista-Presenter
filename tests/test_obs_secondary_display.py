@@ -393,5 +393,46 @@ class InstalledObsPathTests(unittest.TestCase):
         logged.assert_called_once()
 
 
+class ObsProjectorMonitorTests(unittest.TestCase):
+    """What: Check projector reopening and closing when screens change.
+
+    Why included: Plugging in a cable must move the projector to the new screen, and a
+    normal close must not trigger OBS's slow scene-collection reload.
+    Where used: run_reliability_checks.bat release gate.
+    """
+
+    def setUp(self) -> None:
+        self.controller = ObsSecondaryDisplayController.__new__(ObsSecondaryDisplayController)
+        self.controller.current_window_mode = "projector"
+        self.controller.browser_source_ready = True
+        self.controller.projector_opened = False
+        self.controller.projector_geometry = None
+        self.bounds = {"x": 0, "y": 0, "width": 1366, "height": 768}
+        self.controller.get_display_config = lambda: {"display_bounds": dict(self.bounds)}
+        self.requests: list[str] = []
+        self.controller._request = lambda name, *_args: self.requests.append(name) or {}
+        self.controller._browser_source_name = lambda: "PewVista Secondary"
+        self.controller._select_monitor_index = lambda: 1
+
+    def test_projector_reopens_when_a_new_screen_is_connected(self) -> None:
+        with patch.object(self.controller, "_close_projector_windows") as closed:
+            self.controller._open_projector_if_needed()
+            self.controller._open_projector_if_needed()
+            self.assertEqual(self.requests.count("OpenSourceProjector"), 1)
+            self.bounds = {"x": 1366, "y": 0, "width": 1920, "height": 1080}
+            self.controller._open_projector_if_needed()
+        self.assertEqual(self.requests.count("OpenSourceProjector"), 2)
+        self.assertEqual(closed.call_count, 2)
+
+    def test_close_waits_for_window_instead_of_reloading_obs(self) -> None:
+        if os.name != "nt":
+            self.skipTest("Windows projector windows only")
+        visible_checks = iter([True, True, False])
+        with patch.object(self.controller, "_has_visible_projector_windows", side_effect=lambda: next(visible_checks)), \
+                patch.object(self.controller, "_close_projectors_via_websocket") as websocket_close:
+            self.controller._close_projector_windows()
+        websocket_close.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

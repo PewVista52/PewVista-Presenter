@@ -4051,10 +4051,10 @@ def build_ui() -> tk.Tk:
         heading_lbl.configure(bg=theme["panel_bg"], fg=theme["accent"], font=header_font)
 
         dialog.update_idletasks()
-        req_w = max(360, min(620, dialog.winfo_reqwidth()))
-        req_h = max(150, min(520, dialog.winfo_reqheight()))
         screen_w = dialog.winfo_screenwidth()
         screen_h = dialog.winfo_screenheight()
+        req_w = max(360, min(max(620, screen_w - 120), dialog.winfo_reqwidth()))
+        req_h = max(150, min(screen_h - 120, dialog.winfo_reqheight()))
         try:
             host_x = host.winfo_rootx() + max(0, (host.winfo_width() - req_w) // 2)
             host_y = host.winfo_rooty() + max(0, (host.winfo_height() - req_h) // 2)
@@ -4157,7 +4157,8 @@ def build_ui() -> tk.Tk:
         mirror_controller.render_preview()
         if hasattr(mirror_controller, "enabled_var") and mirror_controller.enabled_var.get():
             mirror_controller.last_secondary_signature = None
-            mirror_controller.push_to_secondary()
+            mirror_controller.pending_secondary_signature = None
+            mirror_controller.request_push_to_secondary(force=True)
         save_ui_settings(selected_theme.get(), selected_font_family.get(), selected_font_style.get(), selected_font_size.get(), selected_display_font_family.get(), selected_display_font_style.get(), selected_display_outline_size.get(), selected_display_text_color.get(), selected_display_key_size.get())
 
     def apply_service_display_settings(settings: object) -> None:

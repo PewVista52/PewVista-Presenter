@@ -1233,6 +1233,7 @@ class ObsSecondaryDisplayController:
         self.browser_source_ready = False
         self.browser_source_settings: dict | None = None
         self.projector_opened = False
+        self.projector_geometry: tuple[int, int, int, int] | None = None
         self.closed = False
         self.current_background_path = default_background_path
         self.current_window_mode = self.initial_window_mode
@@ -1299,7 +1300,18 @@ class ObsSecondaryDisplayController:
             normalized_columns,
             tuple(self.current_hot_background_paths),
             json.dumps(browser_settings, sort_keys=True, separators=(",", ":")),
+            self._current_display_geometry(),
         )
+
+    def _current_display_geometry(self) -> tuple[int, int, int, int] | None:
+        """What: Return the x/y/width/height of the display the projector should use.
+
+        Why included: A newly plugged-in screen can have the same resolution as the laptop
+        screen, so position must also be compared to notice the change.
+        Where used: _build_push_signature() and _open_projector_if_needed().
+        Returns: Geometry tuple, or None when bounds are unavailable.
+        """
+        return self._get_bounds_geometry(self.get_display_config().get("display_bounds"))
 
     def _load_settings(self) -> dict:
         """What: Merge persisted OBS options over the supported defaults.
@@ -2264,8 +2276,13 @@ class ObsSecondaryDisplayController:
         Where used: push_state() after a successful state update.
         Returns: None; marks the projector open after OBS accepts the request.
         """
-        if self.projector_opened or self.current_window_mode == "hidden":
+        if self.current_window_mode == "hidden":
             return
+        target_geometry = self._current_display_geometry()
+        if self.projector_opened and target_geometry == self.projector_geometry:
+            return
+        # Either not open yet, or a screen was connected/disconnected/rearranged:
+        # move the projector to the current presentation monitor.
         self._close_projector_windows()
         if not self.browser_source_ready:
             self._ensure_browser_source()
@@ -2277,6 +2294,7 @@ class ObsSecondaryDisplayController:
             },
         )
         self.projector_opened = True
+        self.projector_geometry = target_geometry
 
     def _has_visible_projector_windows(self) -> bool:
         """What: Check whether any visible OBS projector window for this browser source is still open.
@@ -2412,7 +2430,14 @@ class ObsSecondaryDisplayController:
 
         try:
             enum_windows(enum_proc, None)
-            if any_blocked[0] or self._has_visible_projector_windows():
+            # WM_CLOSE is asynchronous; give OBS time to close the projector before
+            # falling back to the expensive scene-collection toggle (which reloads OBS).
+            still_visible = self._has_visible_projector_windows()
+            deadline = time.monotonic() + 1.5
+            while still_visible and not any_blocked[0] and time.monotonic() < deadline:
+                time.sleep(0.05)
+                still_visible = self._has_visible_projector_windows()
+            if still_visible:
                 self._close_projectors_via_websocket()
         finally:
             self.projector_opened = False

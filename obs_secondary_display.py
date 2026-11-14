@@ -2225,13 +2225,25 @@ class ObsSecondaryDisplayController:
         target_geometry = self._get_bounds_geometry(display_bounds)
         if target_geometry is None:
             return None
+        target_x, target_y = target_geometry[0], target_geometry[1]
+        best_index: int | None = None
+        best_score: tuple[int, int] | None = None
         for fallback_index, monitor in enumerate(monitors):
             monitor_index = self._coerce_int(monitor.get("monitorIndex"))
             if monitor_index is None:
                 monitor_index = fallback_index
-            if self._get_obs_monitor_geometry(monitor) == target_geometry:
+            geometry = self._get_obs_monitor_geometry(monitor)
+            if geometry is None:
+                continue
+            if geometry == target_geometry:
                 return monitor_index
-        return None
+            # OBS may report DPI-scaled sizes with physical positions, so compare the
+            # top-left corner and pick the closest screen instead of requiring an exact match.
+            distance = abs(geometry[0] - target_x) + abs(geometry[1] - target_y)
+            score = (0 if distance == 0 else 1, distance)
+            if best_score is None or score < best_score:
+                best_score, best_index = score, monitor_index
+        return best_index
 
     def _select_monitor_index(self) -> int:
         """What: Choose the OBS monitor matching current bounds, then saved/fallback index.

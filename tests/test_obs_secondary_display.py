@@ -433,6 +433,14 @@ class ObsProjectorMonitorTests(unittest.TestCase):
             self.controller._close_projector_windows()
         websocket_close.assert_not_called()
 
+    def test_scaled_obs_monitor_list_still_selects_the_second_screen(self) -> None:
+        monitors = [
+            {"monitorIndex": 0, "monitorPositionX": 0, "monitorPositionY": 0, "monitorWidth": 1536, "monitorHeight": 864},
+            {"monitorIndex": 1, "monitorPositionX": 1920, "monitorPositionY": 0, "monitorWidth": 1280, "monitorHeight": 720},
+        ]
+        bounds = {"x": 1920, "y": 0, "width": 1920, "height": 1080}
+        self.assertEqual(self.controller._match_obs_monitor_index(monitors, bounds), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -25,7 +25,7 @@ Keep this on a USB drive and a second place. Never share it or put it on GitHub.
 TO RESTORE: double-click "Restore PewVista.bat" in this folder.
 It puts back your signing keys, grammar checker, license records, and Desktop License Tool icon.
 (On a new PC, download the project from GitHub to C:\\PewVista first:
- https://github.com/antonvalerie89/PewVista)
+ https://github.com/PewVista52/PewVista)
 
 Contents:
 - PewVista Signing    your private keys (license codes and update signing) - MOST IMPORTANT

@@ -234,6 +234,8 @@ CONTENTS
   Yes to open License and Subscription and renew.
 
 20. UPDATES
+- The latest installer and update are available at
+  https://github.com/PewVista52/PewVista/releases/latest.
 - PewVista automatically checks for updates every time it opens and asks
   before installing. Help > Check for Updates... also checks immediately.
 - Help > Install Update... installs an update ZIP you received from

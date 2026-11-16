@@ -44,7 +44,7 @@ try {
     $pythonExe = Join-Path $scriptDirectory ".venv\Scripts\python.exe"
     $autoUpdateScript = Join-Path $scriptDirectory "auto_update.py"
     if ((Test-Path -LiteralPath $pythonExe -PathType Leaf) -and (Test-Path -LiteralPath $autoUpdateScript -PathType Leaf)) {
-        & $pythonExe $autoUpdateScript feed $temporaryDirectory "https://github.com/antonvalerie89/PewVista/releases/latest/download" | Out-Null
+        & $pythonExe $autoUpdateScript feed $temporaryDirectory "https://github.com/PewVista52/PewVista/releases/latest/download" | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "latest.json feed creation failed. No finished release has been published." }
     }
     function Move-DirectoryWithRetry([string]$Source, [string]$Destination) {

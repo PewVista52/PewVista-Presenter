@@ -367,7 +367,7 @@ def run_ui_smoke_test(temp_root: Path) -> None:
 
         root = main.build_ui()
         root.withdraw()
-        _assert(root.title() == "PewVista", f"Expected product title PewVista, got {root.title()!r}")
+        _assert(root.title() == "PewVista Presenter", f"Expected product title PewVista Presenter, got {root.title()!r}")
         notebook = _find_notebook(root)
         notebook.select(0)
         _pump_until(root, lambda: notebook.index(notebook.select()) == 0)

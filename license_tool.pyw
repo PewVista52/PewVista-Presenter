@@ -24,8 +24,8 @@ Keep this on a USB drive and a second place. Never share it or put it on GitHub.
 
 TO RESTORE: double-click "Restore PewVista.bat" in this folder.
 It puts back your signing keys, grammar checker, license records, and Desktop License Tool icon.
-(On a new PC, download the project from GitHub to C:\\PewVista first:
- https://github.com/PewVista52/PewVista)
+(On a new PC, download the project from GitHub to C:\\PewVista Presenter first:
+ https://github.com/PewVista52/PewVista-Presenter)
 
 Contents:
 - PewVista Signing    your private keys (license codes and update signing) - MOST IMPORTANT
@@ -106,7 +106,7 @@ def create_code(pc_id: str, church: str, days: int) -> tuple[str, date]:
 
 def main() -> None:
     root = tk.Tk()
-    root.title("PewVista - Create License Code")
+    root.title("PewVista Presenter - Create License Code")
     icon = Path(__file__).resolve().parent / "Resourses" / "PewVista.ico"
     if icon.is_file():
         try:

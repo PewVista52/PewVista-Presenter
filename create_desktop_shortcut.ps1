@@ -24,7 +24,7 @@ if (-not (Test-Path $TargetExe)) {
 }
 
 $appDir = Split-Path -Parent $TargetExe
-$displayName = "PewVista"
+$displayName = "PewVista Presenter"
 $customIconPath = ""
 $churchName = ""
 $dataDirectory = Join-Path $appDir "Data"
@@ -47,7 +47,8 @@ if (Test-Path -LiteralPath $brandingConfig) {
     }
     catch { Write-Host "Could not read branding.json; using installation settings." -ForegroundColor Yellow }
 }
-if ($churchName.Trim()) { $displayName = "PewVista - " + $churchName.Trim() }
+$trimmedChurchName = $churchName.Trim()
+if ($trimmedChurchName -and $trimmedChurchName -notin @("PewVista", "PewVista Presenter")) { $displayName = "PewVista Presenter - " + $trimmedChurchName }
 $iconPath = Join-Path $appDir "Resourses\PewVista.ico"
 if (-not (Test-Path $iconPath)) {
     $iconPath = Join-Path $scriptDir "Resourses\PewVista.ico"

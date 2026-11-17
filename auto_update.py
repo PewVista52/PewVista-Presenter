@@ -1,7 +1,7 @@
 """Check a public update feed, download the newest signed update ZIP, and publish the feed.
 
 The feed is a small JSON file (latest.json) next to the update ZIP on a public download host:
-    {"version": "20261109-202626-123", "url": "https://.../PewVista-Update-Windows-x64.zip",
+    {"version": "20261109-202626-123", "url": "https://.../PewVista-Presenter-Update-Windows-x64.zip",
      "sha256": "<hex>", "size": 123, "notes": "What's new"}
 The ZIP itself is still signature-checked by windows_update.prepare_update_archive() before
 anything is installed, so a compromised host cannot install altered files.
@@ -24,9 +24,9 @@ from pathlib import Path
 from app_paths import get_app_data_path
 
 # Public folder that holds latest.json and the update ZIP; blank disables automatic checks.
-UPDATE_FEED_URL = "https://github.com/PewVista52/PewVista/releases/latest/download"
+UPDATE_FEED_URL = "https://github.com/PewVista52/PewVista-Presenter/releases/latest/download"
 FEED_FILE_NAME = "latest.json"
-UPDATE_FILE_NAME = "PewVista-Update-Windows-x64.zip"
+UPDATE_FILE_NAME = "PewVista-Presenter-Update-Windows-x64.zip"
 CHECK_INTERVAL = timedelta(hours=20)
 _STATE_FILE_NAME = "update_check.json"
 

@@ -201,7 +201,7 @@ try {
         [System.IO.Directory]::CreateDirectory($statusDirectory) | Out-Null
         $statusPath = Join-Path $statusDirectory "status.json"
         $form = New-Object System.Windows.Forms.Form
-        $form.Text = "PewVista | Update"
+        $form.Text = "PewVista Presenter | Update"
         $form.ClientSize = New-Object System.Drawing.Size(620, 280)
         $form.MinimumSize = New-Object System.Drawing.Size(560, 300)
         $form.StartPosition = "CenterScreen"
@@ -212,7 +212,7 @@ try {
         $header.Height = 88
         $header.BackColor = [System.Drawing.Color]::FromArgb(29, 65, 78)
         $title = New-Object System.Windows.Forms.Label
-        $title.Text = "PewVista"
+        $title.Text = "PewVista Presenter"
         $title.ForeColor = [System.Drawing.Color]::White
         $title.Font = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
         $title.AutoSize = $true
@@ -432,42 +432,69 @@ try {
         [System.IO.File]::Copy($legacyExecutable, $legacyBackup, $true)
         $changedFiles.Add([pscustomobject]@{ Target = $legacyExecutable; Backup = $legacyBackup; Existed = $true })
         [System.IO.File]::Delete($legacyExecutable)
-        try {
-            $iconSource = Join-Path $InstallDirectory "Resourses\PewVista.ico"
-            $installationConfig = Join-Path $InstallDirectory "installation.json"
-            if (Test-Path -LiteralPath $installationConfig -PathType Leaf) {
-                try {
-                    $installationSettings = Get-Content -LiteralPath $installationConfig -Raw | ConvertFrom-Json
-                    if ($installationSettings.custom_icon_path -and (Test-Path -LiteralPath ([string]$installationSettings.custom_icon_path) -PathType Leaf)) {
-                        $iconSource = [string]$installationSettings.custom_icon_path
-                    }
+    }
+    try {
+        $iconSource = Join-Path $InstallDirectory "Resourses\PewVista.ico"
+        $churchName = ""
+        $installationConfig = Join-Path $InstallDirectory "installation.json"
+        if (Test-Path -LiteralPath $installationConfig -PathType Leaf) {
+            try {
+                $installationSettings = Get-Content -LiteralPath $installationConfig -Raw | ConvertFrom-Json
+                if ($installationSettings.church_name) { $churchName = [string]$installationSettings.church_name }
+                if ($installationSettings.custom_icon_path -and (Test-Path -LiteralPath ([string]$installationSettings.custom_icon_path) -PathType Leaf)) {
+                    $iconSource = [string]$installationSettings.custom_icon_path
                 }
-                catch { }
             }
-            $shell = New-Object -ComObject WScript.Shell
-            $shortcutFolders = @([Environment]::GetFolderPath([Environment+SpecialFolder]::CommonDesktopDirectory),
-                [Environment]::GetFolderPath([Environment+SpecialFolder]::CommonPrograms),
-                [Environment]::GetFolderPath([Environment+SpecialFolder]::Desktop),
-                [Environment]::GetFolderPath([Environment+SpecialFolder]::Programs)) | Select-Object -Unique
-            foreach ($folder in $shortcutFolders) {
-                if (-not $folder -or -not (Test-Path -LiteralPath $folder -PathType Container)) { continue }
-                foreach ($link in @(Get-ChildItem -LiteralPath $folder -Filter "*.lnk" -File -ErrorAction SilentlyContinue)) {
-                    try {
-                        $shortcut = $shell.CreateShortcut($link.FullName)
-                        if (-not $shortcut.TargetPath) { continue }
-                        if (-not [System.IO.Path]::GetFullPath($shortcut.TargetPath).Equals($legacyExecutable, [StringComparison]::OrdinalIgnoreCase)) { continue }
-                        $shortcut.TargetPath = $executable
-                        $shortcut.WorkingDirectory = $InstallDirectory
-                        if (Test-Path -LiteralPath $iconSource -PathType Leaf) { $shortcut.IconLocation = "$iconSource,0" }
-                        $shortcut.Save()
-                        Write-Host "Updated shortcut to the renamed app: $($link.FullName)"
-                    }
-                    catch { Write-Host "Could not update shortcut: $($link.FullName)" }
+            catch { }
+        }
+        $brandingConfig = Join-Path $data "branding.json"
+        if (Test-Path -LiteralPath $brandingConfig -PathType Leaf) {
+            try {
+                $brandingSettings = Get-Content -LiteralPath $brandingConfig -Raw | ConvertFrom-Json
+                if ($brandingSettings.PSObject.Properties.Name -contains "church_name") {
+                    $churchName = [string]$brandingSettings.church_name
                 }
+                if (($brandingSettings.PSObject.Properties.Name -contains "custom_icon_path") -and
+                    $brandingSettings.custom_icon_path -and (Test-Path -LiteralPath ([string]$brandingSettings.custom_icon_path) -PathType Leaf)) {
+                    $iconSource = [string]$brandingSettings.custom_icon_path
+                }
+            }
+            catch { }
+        }
+        $trimmedChurchName = $churchName.Trim()
+        $shortcutDisplayName = if ($trimmedChurchName -and $trimmedChurchName -notin @("PewVista", "PewVista Presenter")) { "PewVista Presenter - " + $trimmedChurchName } else { "PewVista Presenter" }
+        $shell = New-Object -ComObject WScript.Shell
+        $shortcutFolders = @([Environment]::GetFolderPath([Environment+SpecialFolder]::CommonDesktopDirectory),
+            [Environment]::GetFolderPath([Environment+SpecialFolder]::CommonPrograms),
+            [Environment]::GetFolderPath([Environment+SpecialFolder]::Desktop),
+            [Environment]::GetFolderPath([Environment+SpecialFolder]::Programs)) | Select-Object -Unique
+        foreach ($folder in $shortcutFolders) {
+            if (-not $folder -or -not (Test-Path -LiteralPath $folder -PathType Container)) { continue }
+            foreach ($link in @(Get-ChildItem -LiteralPath $folder -Filter "*.lnk" -File -ErrorAction SilentlyContinue)) {
+                try {
+                    $shortcut = $shell.CreateShortcut($link.FullName)
+                    if (-not $shortcut.TargetPath) { continue }
+                    $resolvedTarget = [System.IO.Path]::GetFullPath($shortcut.TargetPath)
+                    if (-not $resolvedTarget.Equals($executable, [StringComparison]::OrdinalIgnoreCase) -and
+                        -not $resolvedTarget.Equals($legacyExecutable, [StringComparison]::OrdinalIgnoreCase)) { continue }
+                    $newLinkPath = Join-Path $folder ($shortcutDisplayName + ".lnk")
+                    $updatedShortcut = $shell.CreateShortcut($newLinkPath)
+                    $updatedShortcut.TargetPath = $executable
+                    $updatedShortcut.WorkingDirectory = $InstallDirectory
+                    if (Test-Path -LiteralPath $iconSource -PathType Leaf) { $updatedShortcut.IconLocation = "$iconSource,0" }
+                    $updatedShortcut.Description = "$shortcutDisplayName - Church Presentation & Display System"
+                    $updatedShortcut.Save()
+                    if (-not $link.FullName.Equals($newLinkPath, [StringComparison]::OrdinalIgnoreCase) -and
+                        (Test-Path -LiteralPath $link.FullName -PathType Leaf)) {
+                        Remove-Item -LiteralPath $link.FullName -Force -ErrorAction SilentlyContinue
+                    }
+                    Write-Host "Updated shortcut: $newLinkPath"
+                }
+                catch { Write-Host "Could not update shortcut: $($link.FullName)" }
             }
         }
-        catch { Write-Host "Shortcuts pointing to the old executable could not be updated automatically." }
     }
+    catch { Write-Host "Shortcuts could not be updated automatically." }
     Write-Progress -Activity "Installing PewVista update" -Completed
     [System.IO.File]::WriteAllText($logPath, "Update completed: $(Get-Date -Format o)`r`nBackup: $backupDirectory")
     try {

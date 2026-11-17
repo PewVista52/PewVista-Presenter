@@ -1,7 +1,7 @@
 # Restore a PewVista publisher backup made with "Back Up Now" in the license tool.
 # Double-click "Restore PewVista.bat" in the backup folder; this script does the work.
 # Existing different keys are never overwritten: they are kept under a dated name.
-param([switch]$Quiet, [string]$ProjectDirectory = "C:\PewVista")
+param([switch]$Quiet, [string]$ProjectDirectory = "C:\PewVista Presenter")
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms, System.IO.Compression.FileSystem
@@ -59,13 +59,13 @@ try {
 
     # Clone or reconnect the GitHub repository at $project
     if (-not (Test-Path -LiteralPath (Join-Path $project "licensing.py")) -and $gitCmd) {
-        & $gitCmd.Source clone "https://github.com/PewVista52/PewVista.git" $project | Out-Null
+        & $gitCmd.Source clone "https://github.com/PewVista52/PewVista-Presenter.git" $project | Out-Null
         if (Test-Path -LiteralPath (Join-Path $project "licensing.py")) {
             $report.Add("Project: cloned from GitHub to $project.")
         }
     }
     elseif ((Test-Path -LiteralPath (Join-Path $project "licensing.py")) -and -not (Test-Path -LiteralPath (Join-Path $project ".git")) -and $gitCmd) {
-        & $gitCmd.Source clone --bare "https://github.com/PewVista52/PewVista.git" (Join-Path $project ".git") | Out-Null
+        & $gitCmd.Source clone --bare "https://github.com/PewVista52/PewVista-Presenter.git" (Join-Path $project ".git") | Out-Null
         & $gitCmd.Source -C $project config --bool core.bare false
         & $gitCmd.Source -C $project reset --mixed HEAD | Out-Null
         $report.Add("Git repository: reconnected at $project.")
@@ -132,7 +132,7 @@ try {
         }
     }
     else {
-        $report.Add("The PewVista project is not at $project yet. Download it from GitHub (github.com/PewVista52/PewVista), then run this restore again for the grammar checker and license records.")
+        $report.Add("The PewVista project is not at $project yet. Download it from GitHub (github.com/PewVista52/PewVista-Presenter), then run this restore again for the grammar checker and license records.")
     }
     [void](Show-Message ($report -join "`r`n`r`n") "Restore PewVista - finished")
 }

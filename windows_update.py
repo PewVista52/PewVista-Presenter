@@ -19,6 +19,7 @@ from update_signing import verify_update_archive
 
 APP_NAME = "The Light Ministries"
 PRODUCT_NAME = "PewVista"
+DISPLAY_NAME = "PewVista Presenter"
 EXECUTABLE_NAME = PRODUCT_NAME + ".exe"
 LEGACY_EXECUTABLE_NAME = APP_NAME + ".exe"
 PROTECTED_ROOTS = {"data", "config", ".update-backups", ".test-installation"}
@@ -202,14 +203,14 @@ def prepare_update_archive(archive_path: Path, install_directory: Path, installe
             if manifest_name in archive.namelist():
                 manifest = json.loads(archive.read(manifest_name).decode("utf-8-sig"))
                 if manifest.get("application") not in {expected_identity, APP_NAME} or manifest.get("package_type") != "update":
-                    raise ValueError(f"Select the {PRODUCT_NAME} Update ZIP, not its Installation ZIP.")
+                    raise ValueError(f"Select the {DISPLAY_NAME} Update ZIP, not its Installation ZIP.")
             members = []
             seen = set()
             for member in archive.infolist():
                 name = member.filename.replace("\\", "/")
                 path = PurePosixPath(name)
                 if path.is_absolute() or len(path.parts) < 1 or path.parts[0].casefold() not in {APP_NAME.casefold(), PRODUCT_NAME.casefold()}:
-                    raise ValueError(f"This is not a {PRODUCT_NAME} desktop update.")
+                    raise ValueError(f"This is not a {DISPLAY_NAME} desktop update.")
                 if any(part in {".", ".."} or ":" in part or part.endswith((".", " ")) for part in path.parts):
                     raise ValueError("The update contains an unsafe file path.")
                 if stat.S_ISLNK(member.external_attr >> 16):

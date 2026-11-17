@@ -1620,7 +1620,8 @@ def build_ui() -> tk.Tk:
         Returns: Title with church name, license state, and a TEST COPY marker when applicable.
         """
         church_name = str(get_branding_settings().get("church_name") or "").strip()
-        display = f"{PRODUCT_NAME} - {church_name}" if church_name else PRODUCT_NAME
+        has_distinct_church_name = bool(church_name) and church_name.casefold() not in {"pewvista", PRODUCT_NAME.casefold()}
+        display = f"{PRODUCT_NAME} - {church_name}" if has_distinct_church_name else PRODUCT_NAME
         try:
             license_status = licensing.get_license_status()
         except Exception as error:

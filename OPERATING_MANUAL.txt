@@ -1,4 +1,5 @@
-PewVista - Operating Manual
+PewVista Presenter - Operating Manual
+In this manual, "PewVista" is shorthand for PewVista Presenter.
 
 CONTENTS
 1. Getting Started
@@ -25,7 +26,7 @@ CONTENTS
 
 
 1. GETTING STARTED
-- Start PewVista from its desktop or Start Menu shortcut.
+- Start PewVista Presenter from its desktop or Start Menu shortcut.
 - The main window is the control screen used by the operator. The live
   (secondary) screen is what the congregation sees on the second monitor
   or projector.
@@ -234,16 +235,19 @@ CONTENTS
   Yes to open License and Subscription and renew.
 
 20. UPDATES
-- The latest installer and update are available at
-  https://github.com/PewVista52/PewVista/releases/latest.
+- The latest installer (PewVista Presenter Setup.exe) and update
+  (PewVista-Presenter-Update-Windows-x64.zip) are available at
+  https://github.com/PewVista52/PewVista-Presenter/releases/latest.
 - PewVista automatically checks for updates every time it opens and asks
   before installing. Help > Check for Updates... also checks immediately.
 - Help > Install Update... installs an update ZIP you received from
   PewVista. Accept the Terms and Conditions when asked.
 - The app and OBS close while the update installs, the update window
   closes automatically when finished, and PewVista restarts afterwards.
-  Your data, settings, and licenses are kept, and only the 2 most recent
-  installation/update backups are retained so disk space is not filled up.
+  Your data, settings, church name, and licenses are kept, Desktop and
+  Start Menu shortcuts are refreshed to PewVista Presenter, and only the 2
+  most recent installation/update backups are retained so disk space is
+  not filled up.
 - The update (and Setup when reinstalling) automatically closes any
   program that is using PewVista's files, such as OBS or the grammar
   checker, and retries a locked file instead of failing.

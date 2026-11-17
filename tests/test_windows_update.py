@@ -873,9 +873,9 @@ class WindowsUpdateTests(unittest.TestCase):
             "-AppDirectory", str(app_directory), "-OutputRoot", str(output)], capture_output=True, text=True, timeout=90, env=environment)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         release = next(output.iterdir())
-        install_zip = release / "PewVista-Install-Windows-x64.zip"
-        update_zip = release / "PewVista-Update-Windows-x64.zip"
-        setup_executable = release / "PewVista Setup.exe"
+        install_zip = release / "PewVista-Presenter-Install-Windows-x64.zip"
+        update_zip = release / "PewVista-Presenter-Update-Windows-x64.zip"
+        setup_executable = release / "PewVista Presenter Setup.exe"
         self.assertTrue(install_zip.is_file())
         self.assertTrue(update_zip.is_file())
         self.assertTrue(setup_executable.is_file())
@@ -899,15 +899,15 @@ class WindowsUpdateTests(unittest.TestCase):
                 "-AppDirectory", str(app_directory), "-OutputRoot", str(output)], capture_output=True, text=True, timeout=90)
             self.assertEqual(repeated.returncode, 0, repeated.stdout + repeated.stderr)
             if repeat_index == 0:
-                delta_zip = output / "latest" / "PewVista-Update-Windows-x64.zip"
+                delta_zip = output / "latest" / "PewVista-Presenter-Update-Windows-x64.zip"
                 with zipfile.ZipFile(delta_zip) as archive:
                     names = archive.namelist()
                     self.assertIn(APP_NAME + "/Bibles/New Creator Bible.pdf", names)
                     self.assertNotIn(APP_NAME + "/Bibles/Creator Bible.pdf", names)
         self.assertEqual({path.name for path in output.iterdir()}, {"latest", "previous"})
         self.assertEqual(len(list((output / "previous").glob("*.zip"))), 2)
-        self.assertTrue((output / "latest" / "PewVista Setup.exe").is_file())
-        self.assertTrue((output / "previous" / "PewVista Setup.exe").is_file())
+        self.assertTrue((output / "latest" / "PewVista Presenter Setup.exe").is_file())
+        self.assertTrue((output / "previous" / "PewVista Presenter Setup.exe").is_file())
         with zipfile.ZipFile(install_zip) as archive:
             names = archive.namelist()
             self.assertIn("PewVista/Data/biblical_lexicon/reference.json", names)

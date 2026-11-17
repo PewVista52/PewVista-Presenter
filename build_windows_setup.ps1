@@ -151,12 +151,12 @@ internal static class SetupLauncher
         try
         {
             Directory.CreateDirectory(temporary);
-            string zip = Path.Combine(temporary, "PewVista-Install-Windows-x64.zip");
+            string zip = Path.Combine(temporary, "PewVista-Presenter-Install-Windows-x64.zip");
             string script = Path.Combine(temporary, "setup_windows_self_extract.ps1");
             File.WriteAllBytes(script, Convert.FromBase64String(Bootstrap));
             using (Form progress = new Form())
             {
-                progress.Text = "PewVista Setup";
+                progress.Text = "PewVista Presenter Setup";
                 progress.Font = new System.Drawing.Font("Segoe UI", 10);
                 progress.ClientSize = new System.Drawing.Size(560, 230);
                 progress.StartPosition = FormStartPosition.CenterScreen;

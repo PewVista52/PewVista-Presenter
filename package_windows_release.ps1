@@ -21,14 +21,18 @@ try {
     $temporaryDirectory = Join-Path $OutputRoot (".preparing-" + [guid]::NewGuid().ToString("N"))
     [System.IO.Directory]::CreateDirectory($temporaryDirectory) | Out-Null
     $previousReleaseDirectory = Join-Path $OutputRoot "latest"
-    $previousInstallArchive = Join-Path $previousReleaseDirectory "PewVista-Install-Windows-x64.zip"
+    $previousInstallArchive = Join-Path $previousReleaseDirectory "PewVista-Presenter-Install-Windows-x64.zip"
+    if (-not (Test-Path -LiteralPath $previousInstallArchive -PathType Leaf)) {
+        $legacyPewVistaArchive = Join-Path $previousReleaseDirectory "PewVista-Install-Windows-x64.zip"
+        if (Test-Path -LiteralPath $legacyPewVistaArchive -PathType Leaf) { $previousInstallArchive = $legacyPewVistaArchive }
+    }
     if (-not (Test-Path -LiteralPath $previousInstallArchive -PathType Leaf)) {
         $legacyArchive = Join-Path $previousReleaseDirectory "The Light Ministries-Install-Windows-x64.zip"
         if (Test-Path -LiteralPath $legacyArchive -PathType Leaf) { $previousInstallArchive = $legacyArchive }
     }
     foreach ($kind in @("Installation", "Update")) {
         $label = if ($kind -eq "Installation") { "Install" } else { "Update" }
-        $archive = Join-Path $temporaryDirectory "PewVista-$label-Windows-x64.zip"
+        $archive = Join-Path $temporaryDirectory "PewVista-Presenter-$label-Windows-x64.zip"
         if ($kind -eq "Update" -and (Test-Path -LiteralPath $previousInstallArchive -PathType Leaf)) {
             powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $scriptDirectory "create_windows_zip.ps1") -AppDirectory $AppDirectory -ArchivePath $archive -PackageType $kind -PreviousInstallArchive $previousInstallArchive -ReleaseVersion $version
         }
@@ -37,14 +41,14 @@ try {
         }
         if ($LASTEXITCODE -ne 0) { throw "$kind package creation failed. No finished release has been published." }
     }
-    $setupExecutable = Join-Path $temporaryDirectory "PewVista Setup.exe"
+    $setupExecutable = Join-Path $temporaryDirectory "PewVista Presenter Setup.exe"
     Write-Host "[SETUP] Building and verifying the single-file installer..."
-    powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $scriptDirectory "build_windows_setup.ps1") -InstallationArchive (Join-Path $temporaryDirectory "PewVista-Install-Windows-x64.zip") -SetupExecutable $setupExecutable
+    powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $scriptDirectory "build_windows_setup.ps1") -InstallationArchive (Join-Path $temporaryDirectory "PewVista-Presenter-Install-Windows-x64.zip") -SetupExecutable $setupExecutable
     if ($LASTEXITCODE -ne 0) { throw "Setup.exe build failed. No finished release has been published." }
     $pythonExe = Join-Path $scriptDirectory ".venv\Scripts\python.exe"
     $autoUpdateScript = Join-Path $scriptDirectory "auto_update.py"
     if ((Test-Path -LiteralPath $pythonExe -PathType Leaf) -and (Test-Path -LiteralPath $autoUpdateScript -PathType Leaf)) {
-        & $pythonExe $autoUpdateScript feed $temporaryDirectory "https://github.com/PewVista52/PewVista/releases/latest/download" | Out-Null
+        & $pythonExe $autoUpdateScript feed $temporaryDirectory "https://github.com/PewVista52/PewVista-Presenter/releases/latest/download" | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "latest.json feed creation failed. No finished release has been published." }
     }
     function Move-DirectoryWithRetry([string]$Source, [string]$Destination) {
@@ -68,7 +72,7 @@ try {
     $previousDirectory = Join-Path $OutputRoot "previous"
     if ([System.IO.Directory]::Exists($releaseDirectory)) {
         if ([System.IO.Directory]::Exists($previousDirectory)) {
-            $expectedNames = @("PewVista-Install-Windows-x64.zip", "PewVista-Update-Windows-x64.zip", "PewVista Setup.exe", "latest.json", "The Light Ministries-Install-Windows-x64.zip", "The Light Ministries-Update-Windows-x64.zip", "The Light Ministries Setup.exe")
+            $expectedNames = @("PewVista-Presenter-Install-Windows-x64.zip", "PewVista-Presenter-Update-Windows-x64.zip", "PewVista Presenter Setup.exe", "PewVista-Install-Windows-x64.zip", "PewVista-Update-Windows-x64.zip", "PewVista Setup.exe", "latest.json", "The Light Ministries-Install-Windows-x64.zip", "The Light Ministries-Update-Windows-x64.zip", "The Light Ministries Setup.exe")
             if (@(Get-ChildItem -LiteralPath $previousDirectory -Force | Where-Object { $_.PSIsContainer -or $_.Name -notin $expectedNames }).Count -gt 0) {
                 throw "The previous release folder contains other files. It was preserved; move those files before publishing."
             }
@@ -87,9 +91,9 @@ try {
     }
     $temporaryDirectory = $null
     Write-Host "Release ready: $releaseDirectory"
-    Write-Host "New customer: PewVista Setup.exe (no manual extraction required)"
-    Write-Host "Alternative: PewVista-Install-Windows-x64.zip"
-    Write-Host "Existing customer: PewVista-Update-Windows-x64.zip"
+    Write-Host "New customer: PewVista Presenter Setup.exe (no manual extraction required)"
+    Write-Host "Alternative: PewVista-Presenter-Install-Windows-x64.zip"
+    Write-Host "Existing customer: PewVista-Presenter-Update-Windows-x64.zip"
     Write-Host "Your working program and shortcuts were not replaced."
 }
 catch {

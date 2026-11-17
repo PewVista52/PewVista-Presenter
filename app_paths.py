@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 
-PRODUCT_NAME = "PewVista"
+PRODUCT_NAME = "PewVista Presenter"
 
 _SETTINGS_FILE_CACHE: dict[str, tuple[int, dict[str, object]]] = {}
 

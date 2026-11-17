@@ -125,7 +125,7 @@ function Show-SetupWizard {
     Add-Type -AssemblyName System.Windows.Forms, System.Drawing
     [System.Windows.Forms.Application]::EnableVisualStyles()
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "PewVista Setup"
+    $form.Text = "PewVista Presenter Setup"
     $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $form.ClientSize = New-Object System.Drawing.Size(640, 700)
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
@@ -144,7 +144,7 @@ function Show-SetupWizard {
     $header.Size = New-Object System.Drawing.Size(640, 86)
     $header.BackColor = [System.Drawing.Color]::White
     $title = New-Object System.Windows.Forms.Label
-    $title.Text = "Set up PewVista"
+    $title.Text = "Set up PewVista Presenter"
     $title.Font = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Regular)
     $title.Location = New-Object System.Drawing.Point(24, 16)
     $title.Size = New-Object System.Drawing.Size(590, 31)
@@ -841,7 +841,7 @@ public static class SetupConsoleWindow {
         $progressWindow.Form.Close()
         $progressWindow.Form.Dispose()
         $progressWindow = $null
-        [void][System.Windows.Forms.MessageBox]::Show("PewVista is installed for $ChurchName.`r`n`r`nShared data: $DataDirectory`r`n`r`nOther Windows accounts that run services must be added to the 'PewVista Users' group by an administrator (Computer Management > Local Users and Groups), then sign out and in." + $(if ($obsWarning) { "`r`n`r`n" + $obsWarning } else { "" }), "Setup complete", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        [void][System.Windows.Forms.MessageBox]::Show("PewVista Presenter is installed for $ChurchName.`r`n`r`nShared data: $DataDirectory`r`n`r`nOther Windows accounts that run services must be added to the 'PewVista Users' group by an administrator (Computer Management > Local Users and Groups), then sign out and in." + $(if ($obsWarning) { "`r`n`r`n" + $obsWarning } else { "" }), "Setup complete", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
     }
     else { Write-Progress -Activity "Installing PewVista for $ChurchName" -Completed }
     Write-Host "PewVista all-users installation complete: $DestinationDirectory"

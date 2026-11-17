@@ -227,7 +227,24 @@ public static class UninstallConsoleWindow {
         $dataDirectory = [System.IO.Path]::GetFullPath($configuredData).TrimEnd('\')
         if (-not $NoAdmin -and -not $dataDirectory.StartsWith($programDataRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw "Installed shared-data path is outside ProgramData; no files were removed." }
     }
-    $displayName = "PewVista - " + $churchName
+    $brandingConfig = Join-Path $dataDirectory "branding.json"
+    if (Test-Path -LiteralPath $brandingConfig -PathType Leaf) {
+        try {
+            $brandingSettings = Get-Content -LiteralPath $brandingConfig -Raw | ConvertFrom-Json
+            if (($brandingSettings.PSObject.Properties.Name -contains "church_name") -and ([string]$brandingSettings.church_name).Trim()) {
+                $churchName = [string]$brandingSettings.church_name
+            }
+            if (($brandingSettings.PSObject.Properties.Name -contains "default_background_path") -and $brandingSettings.default_background_path) {
+                $defaultBackgroundPath = [string]$brandingSettings.default_background_path
+            }
+            if (($brandingSettings.PSObject.Properties.Name -contains "custom_icon_path") -and $brandingSettings.custom_icon_path) {
+                $customIconPath = [string]$brandingSettings.custom_icon_path
+            }
+        }
+        catch { }
+    }
+    $trimmedChurchName = $churchName.Trim()
+    $displayName = if ($trimmedChurchName -and $trimmedChurchName -notin @("PewVista", "PewVista Presenter")) { "PewVista Presenter - " + $trimmedChurchName } else { "PewVista Presenter" }
     $privateObsRoot = Join-Path (Join-Path $env:LOCALAPPDATA "PewVista") (Split-Path -Leaf $dataDirectory)
     foreach ($proc in @(Get-Process -Name "PewVista", "The Light Ministries", "obs64", "java", "javaw" -ErrorAction SilentlyContinue)) {
         $procPath = $null
@@ -301,7 +318,7 @@ public static class UninstallConsoleWindow {
         [Environment]::GetFolderPath([Environment+SpecialFolder]::Desktop),
         [Environment]::GetFolderPath([Environment+SpecialFolder]::Programs)) | Select-Object -Unique
     foreach ($folder in $shortcutFolders) {
-        foreach ($shortcutName in @($displayName + ".lnk", "PewVista.lnk", $churchName + ".lnk", "The Light Ministries.lnk") | Select-Object -Unique) {
+        foreach ($shortcutName in @($displayName + ".lnk", "PewVista - " + $churchName + ".lnk", "PewVista Presenter.lnk", "PewVista.lnk", $churchName + ".lnk", "The Light Ministries.lnk") | Select-Object -Unique) {
             $path = Join-Path $folder $shortcutName
             if (Test-Path -LiteralPath $path -PathType Leaf) {
                 $target = $shell.CreateShortcut($path).TargetPath

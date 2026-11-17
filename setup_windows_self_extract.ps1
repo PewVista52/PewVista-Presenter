@@ -13,7 +13,10 @@ try {
         if (-not (Test-Path -LiteralPath $sourceDirectory -PathType Container)) { $sourceDirectory = Join-Path ([System.IO.Path]::GetFullPath($ExtractedDirectory)) "The Light Ministries" }
     }
     else {
-        $archivePath = Join-Path $PackageDirectory "PewVista-Install-Windows-x64.zip"
+        $archivePath = Join-Path $PackageDirectory "PewVista-Presenter-Install-Windows-x64.zip"
+        if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
+            $archivePath = Join-Path $PackageDirectory "PewVista-Install-Windows-x64.zip"
+        }
         if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
             $archivePath = Join-Path $PackageDirectory "The Light Ministries-Install-Windows-x64.zip"
         }
@@ -41,7 +44,7 @@ try {
 }
 catch {
     Add-Type -AssemblyName System.Windows.Forms
-    [void][System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "PewVista Setup", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    [void][System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "PewVista Presenter Setup", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     exit 1
 }
 finally {

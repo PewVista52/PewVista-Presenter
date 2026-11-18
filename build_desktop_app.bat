@@ -167,6 +167,11 @@ if errorlevel 1 (
     echo [ERROR] Could not copy the Operating Manual into the app package.
     exit /b 1
 )
+copy /Y "%ROOT_DIR%FUTURE_PLANS.txt" "%DIST_APP_DIR%\FUTURE_PLANS.txt" >nul
+if errorlevel 1 (
+    echo [ERROR] Could not copy the Future Plans document into the app package.
+    exit /b 1
+)
 copy /Y "%ROOT_DIR%THIRD_PARTY_NOTICES.txt" "%DIST_APP_DIR%\THIRD_PARTY_NOTICES.txt" >nul
 if errorlevel 1 (
     echo [ERROR] Could not copy the third-party notices into the app package.

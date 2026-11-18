@@ -252,6 +252,8 @@ CONTENTS
   program that is using PewVista's files, such as OBS or the grammar
   checker, and retries a locked file instead of failing.
 - The installed version is shown at the bottom of the Help menu.
+- Help > Future Plans shows upcoming features and improvements currently
+  planned for future updates.
 
 21. TROUBLESHOOTING
 - Church name, background, or icon missing after an update: set them

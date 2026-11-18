@@ -336,7 +336,7 @@ public static class UninstallConsoleWindow {
     }
     $programFiles = @("PewVista.exe", "The Light Ministries.exe", "apply_windows_update.ps1", "install_windows_app.ps1",
         "install_windows_app.bat", "create_desktop_shortcut.ps1", "create_desktop_shortcut.bat",
-        "WINDOWS_REQUIREMENTS.txt", "TERMS_AND_CONDITIONS.txt", "OPERATING_MANUAL.txt", "SECURITY_AND_PRIVACY.txt", "THIRD_PARTY_NOTICES.txt", "release.json", "installation.json", "update-install.log", ".installation.json", ".test-installation",
+        "WINDOWS_REQUIREMENTS.txt", "TERMS_AND_CONDITIONS.txt", "OPERATING_MANUAL.txt", "FUTURE_PLANS.txt", "SECURITY_AND_PRIVACY.txt", "THIRD_PARTY_NOTICES.txt", "release.json", "installation.json", "update-install.log", ".installation.json", ".test-installation",
         "uninstall_windows_app.bat", "uninstall_windows_app.ps1")
     $removalPaths += @($programFiles | ForEach-Object { Join-Path $AppDirectory $_ } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
     Invoke-UninstallRemoval $removalPaths $AppDirectory ([bool]$Gui)

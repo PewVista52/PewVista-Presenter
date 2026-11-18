@@ -2877,6 +2877,8 @@ def build_ui() -> tk.Tk:
     help_menu.add_command(label="License and Subscription...", command=open_license_dialog)
     help_menu.add_command(label="Operating Manual",
         command=lambda: show_text_document(root, "Operating Manual", get_app_base_path() / "OPERATING_MANUAL.txt"))
+    help_menu.add_command(label="Future Plans",
+        command=lambda: show_text_document(root, "Future Plans", get_app_base_path() / "FUTURE_PLANS.txt"))
     help_menu.add_command(label="Terms and Conditions",
         command=lambda: show_text_document(root, "Terms and Conditions", get_app_base_path() / "TERMS_AND_CONDITIONS.txt"))
     help_menu.add_command(label="Security and Privacy",

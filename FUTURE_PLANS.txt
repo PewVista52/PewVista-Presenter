@@ -1,0 +1,50 @@
+PewVista Presenter - Future Plans & Upcoming Features
+=====================================================
+
+Thank you for using PewVista Presenter in your church services!
+
+We are continually improving PewVista Presenter. Every upcoming improvement is
+included in your regular program updates at no extra cost, and updates always
+preserve your church's songs, Bibles, services, members, and custom branding.
+
+
+UPCOMING FEATURES IN DEVELOPMENT
+--------------------------------
+
+1. Dedicated "Connections" Tab (Wired & Wireless Displays Together)
+   - Manage all your church's wired and wireless screens from one simple tab.
+   - Wired Screens (HDMI, VGA, DisplayPort, USB-C):
+     - Automatic detection of all plugged-in projectors, TVs, and monitors.
+     - One-click "Set Screens to Extend" button so operators never have to
+       adjust Windows display settings manually.
+     - "Identify Screens" button to quickly see which screen is which.
+   - Wireless Projectors:
+     - One-click wireless projector scanning and connection directly inside
+       PewVista Presenter.
+     - Wi-Fi link and scannable QR code for Smart/Android projectors on the
+       church Wi-Fi network.
+
+2. Multiple Wireless Secondary Screens (Android TVs, Tablets, and Phones)
+   - Connect additional Android Smart TVs, tablets, or phones over your church
+     Wi-Fi (or the PC's built-in mobile hotspot—no internet required) to serve
+     as extra live secondary screens for the choir, stage, or overflow rooms.
+   - All wired projectors and wireless screens stay in sync automatically.
+
+3. Wireless Operator Remote Control (Android Phone or Tablet)
+   - Control your service wirelessly from an Android phone or tablet using a
+     secure operator PIN and QR code.
+   - View the live preview, advance items in the Display Queue, and send songs,
+     Bible passages, welcome notes, and preparation items from anywhere in the
+     sanctuary.
+
+4. Standalone Android Edition (Future Phase)
+   - A dedicated Android edition for churches that want to run presentations
+     directly from an Android tablet or phone without a PC, while staying
+     compatible with PewVista Presenter database backups.
+
+
+HAVE A SUGGESTION OR FEEDBACK?
+------------------------------
+If your church has an idea or feature request you would like to see in a future
+update, please email us at:
+pewvista52@gmail.com

@@ -9,6 +9,7 @@ background thread so the loop point costs almost nothing.
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from pathlib import Path
@@ -17,6 +18,8 @@ try:
     import imageio.v2 as imageio
 except ImportError:
     imageio = None
+
+logging.getLogger("imageio_ffmpeg").setLevel(logging.ERROR)
 
 
 PREWARM_SECONDS = 1.5

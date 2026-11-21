@@ -916,6 +916,8 @@ class SecondaryStateServer:
             "overlay_scroll_origin": None,
             "hot_background_paths": [],
         }
+        self._cached_state_json = json.dumps(dict(self._state, license_mark=get_watermark_text()), separators=(",", ":")).encode("utf-8")
+        self._cached_state_json_time = time.monotonic()
         handler_cls = self._build_handler()
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
         self.port = int(self._server.server_address[1])
@@ -1013,7 +1015,7 @@ class SecondaryStateServer:
                     return
                 if parsed.path == "/state.json":
                     outer.last_state_poll = time.time()
-                    self._send_bytes(json.dumps(outer.get_state(), separators=(",", ":")).encode("utf-8"), "application/json; charset=utf-8")
+                    self._send_bytes(outer.get_state_json_bytes(), "application/json; charset=utf-8")
                     return
                 if parsed.path == "/overlay.png":
                     self._send_overlay_png()
@@ -1160,13 +1162,33 @@ class SecondaryStateServer:
         """What: Return a shallow snapshot of current renderer state under the lock.
 
         Why included: HTTP handlers must not read a dictionary while another thread replaces it.
-        Where used: /state.json endpoint handler.
+        Where used: /state.json endpoint handler and tests.
         Returns: State mapping including revision counters, media/overlay settings, and the license mark.
         """
         with self._state_lock:
             state = dict(self._state)
         state["license_mark"] = get_watermark_text()
         return state
+
+    def get_state_json_bytes(self) -> bytes:
+        """What: Return pre-serialized UTF-8 JSON bytes for /state.json without re-encoding on every poll.
+
+        Why included: The OBS browser source polls /state.json continuously while playing video;
+        serving cached bytes avoids GIL contention and disk/registry checks during video playback.
+        Where used: /state.json HTTP GET handler.
+        Returns: UTF-8 JSON payload bytes.
+        """
+        now = time.monotonic()
+        with self._state_lock:
+            if self._cached_state_json and (now - self._cached_state_json_time) < 30.0:
+                return self._cached_state_json
+            state = dict(self._state)
+        state["license_mark"] = get_watermark_text()
+        encoded = json.dumps(state, separators=(",", ":")).encode("utf-8")
+        with self._state_lock:
+            self._cached_state_json = encoded
+            self._cached_state_json_time = now
+        return encoded
 
     def get_overlay_image_png(self) -> bytes:
         """What: Return a copy of the current overlay PNG bytes under the state lock.
@@ -1203,6 +1225,12 @@ class SecondaryStateServer:
             self._state["media_revision"] = previous_media_revision + 1 if media_changed else previous_media_revision
             self._state["overlay_revision"] = previous_overlay_revision + 1 if overlay_changed else previous_overlay_revision
             self._overlay_image_png = next_overlay_png
+            snapshot = dict(self._state)
+        snapshot["license_mark"] = get_watermark_text()
+        encoded = json.dumps(snapshot, separators=(",", ":")).encode("utf-8")
+        with self._state_lock:
+            self._cached_state_json = encoded
+            self._cached_state_json_time = time.monotonic()
         log_timing("obs.state_server.update_state", (time.perf_counter() - started_at) * 1000.0, threshold_ms=15.0, details=f"visible={int(bool(next_state.get('visible')))}")
 
     def shutdown(self) -> None:
@@ -2096,11 +2124,11 @@ class ObsSecondaryDisplayController:
         self._ensure_canvas_frame_rate()
 
     def _ensure_canvas_frame_rate(self) -> None:
-        """What: Configure the OBS canvas to 30 FPS for steady video pacing on integrated GPUs.
+        """What: Configure the OBS canvas to 24 FPS to match church worship background videos.
 
-        Why included: 60 FPS doubles D3D11/CEF texture copies and causes severe frame drops
-        when 24/30 FPS background videos play on integrated GPUs (such as AMD Radeon Vega 3)
-        or wireless displays.
+        Why included: Worship MP4 backgrounds are encoded at 24 FPS; running the OBS canvas
+        and browser source at 24 FPS eliminates 24-into-30/60 Hz 3:2 pulldown judder and
+        minimizes D3D11/CEF texture copies on integrated GPUs and wireless displays.
         Where used: _ensure_client() immediately after a websocket connection exists.
         Returns: None; failures are logged and never block output setup.
         """
@@ -2108,17 +2136,17 @@ class ObsSecondaryDisplayController:
             current = self._request("GetVideoSettings")
             numerator = int(current.get("fpsNumerator") or 0)
             denominator = max(1, int(current.get("fpsDenominator") or 1))
-            if 29.0 <= (numerator / denominator) <= 31.0:
+            if 23.5 <= (numerator / denominator) <= 24.5:
                 return
             self._request("SetVideoSettings", {
-                "fpsNumerator": 30,
+                "fpsNumerator": 24,
                 "fpsDenominator": 1,
                 "baseWidth": int(current.get("baseWidth") or 1920),
                 "baseHeight": int(current.get("baseHeight") or 1080),
                 "outputWidth": int(current.get("outputWidth") or 1920),
                 "outputHeight": int(current.get("outputHeight") or 1080),
             })
-            log_error("obs_secondary_display.canvas_fps", f"Set OBS canvas from {numerator}/{denominator} to 30 FPS for smooth video playback.")
+            log_error("obs_secondary_display.canvas_fps", f"Set OBS canvas from {numerator}/{denominator} to 24 FPS for smooth video playback.")
         except Exception as error:
             log_exception("obs_secondary_display.canvas_fps", error)
 
@@ -2222,7 +2250,7 @@ class ObsSecondaryDisplayController:
             "restart_when_active": False,
             "reroute_audio": False,
             "fps_custom": True,
-            "fps": 30,
+            "fps": 24,
         }
 
     def _ensure_runtime(self) -> None:

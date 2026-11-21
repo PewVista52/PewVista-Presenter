@@ -41,7 +41,7 @@ try {
         }
         if ($LASTEXITCODE -ne 0) { throw "$kind package creation failed. No finished release has been published." }
     }
-    $setupExecutable = Join-Path $temporaryDirectory "PewVista Presenter Setup.exe"
+    $setupExecutable = Join-Path $temporaryDirectory "PewVista-Presenter-Setup.exe"
     Write-Host "[SETUP] Building and verifying the single-file installer..."
     powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $scriptDirectory "build_windows_setup.ps1") -InstallationArchive (Join-Path $temporaryDirectory "PewVista-Presenter-Install-Windows-x64.zip") -SetupExecutable $setupExecutable
     if ($LASTEXITCODE -ne 0) { throw "Setup.exe build failed. No finished release has been published." }
@@ -72,7 +72,7 @@ try {
     $previousDirectory = Join-Path $OutputRoot "previous"
     if ([System.IO.Directory]::Exists($releaseDirectory)) {
         if ([System.IO.Directory]::Exists($previousDirectory)) {
-            $expectedNames = @("PewVista-Presenter-Install-Windows-x64.zip", "PewVista-Presenter-Update-Windows-x64.zip", "PewVista Presenter Setup.exe", "PewVista-Install-Windows-x64.zip", "PewVista-Update-Windows-x64.zip", "PewVista Setup.exe", "latest.json", "The Light Ministries-Install-Windows-x64.zip", "The Light Ministries-Update-Windows-x64.zip", "The Light Ministries Setup.exe")
+            $expectedNames = @("PewVista-Presenter-Install-Windows-x64.zip", "PewVista-Presenter-Update-Windows-x64.zip", "PewVista-Presenter-Setup.exe", "PewVista Presenter Setup.exe", "PewVista-Install-Windows-x64.zip", "PewVista-Update-Windows-x64.zip", "PewVista Setup.exe", "latest.json", "The Light Ministries-Install-Windows-x64.zip", "The Light Ministries-Update-Windows-x64.zip", "The Light Ministries Setup.exe")
             if (@(Get-ChildItem -LiteralPath $previousDirectory -Force | Where-Object { $_.PSIsContainer -or $_.Name -notin $expectedNames }).Count -gt 0) {
                 throw "The previous release folder contains other files. It was preserved; move those files before publishing."
             }
@@ -91,7 +91,7 @@ try {
     }
     $temporaryDirectory = $null
     Write-Host "Release ready: $releaseDirectory"
-    Write-Host "New customer: PewVista Presenter Setup.exe (no manual extraction required)"
+    Write-Host "New customer: PewVista-Presenter-Setup.exe (no manual extraction required)"
     Write-Host "Alternative: PewVista-Presenter-Install-Windows-x64.zip"
     Write-Host "Existing customer: PewVista-Presenter-Update-Windows-x64.zip"
     Write-Host "Your working program and shortcuts were not replaced."

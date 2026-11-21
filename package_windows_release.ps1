@@ -41,7 +41,7 @@ try {
         }
         if ($LASTEXITCODE -ne 0) { throw "$kind package creation failed. No finished release has been published." }
     }
-    $setupExecutable = Join-Path $temporaryDirectory "PewVista-Presenter-Setup.exe"
+    $setupExecutable = Join-Path $temporaryDirectory "PewVista Presenter Setup.exe"
     Write-Host "[SETUP] Building and verifying the single-file installer..."
     powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $scriptDirectory "build_windows_setup.ps1") -InstallationArchive (Join-Path $temporaryDirectory "PewVista-Presenter-Install-Windows-x64.zip") -SetupExecutable $setupExecutable
     if ($LASTEXITCODE -ne 0) { throw "Setup.exe build failed. No finished release has been published." }

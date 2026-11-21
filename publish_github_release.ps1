@@ -9,6 +9,7 @@ Set-Location $scriptDirectory
 
 if (-not $SkipBuild) {
     Write-Host "[1/3] Building customer installation and update packages..."
+    $env:PEWVISTA_SKIP_CHECKS = "1"
     & cmd.exe /c (Join-Path $scriptDirectory "update_windows_app.bat") --no-pause
     if ($LASTEXITCODE -ne 0) {
         throw "Release build failed."

@@ -854,6 +854,7 @@ def build_preparation_tab(tab_frame: tk.Frame, context: dict[str, object]) -> No
         """What: Compose a selected background and fitted Preparation fields for the preview.
 
         Why included: The UI preview should match the renderer's field layout and display dimensions.
+        Caches the preview-scaled text overlay so video/GIF frames do not re-run 1080p LANCZOS resizes.
         Where used: render_selected_block_preview().
         Returns: Composited RGB Pillow image, base image fallback, or None without Pillow.
         """
@@ -863,10 +864,14 @@ def build_preparation_tab(tab_frame: tk.Frame, context: dict[str, object]) -> No
         render_width, render_height = resolve_display_size()
         bg_path = str(state.get("background_path") or getattr(base_image, "_background_path", "") or "")
         fields = build_sized_text_fields("preparation", preview_text, font_value, get_text_sections())
-        overlay_image = render_text_fields_overlay(render_width, render_height, fields, base_image=base_image, background_path=bg_path)
+        overlay_key = (repr(fields), bg_path, render_width, render_height, preview_width, preview_height, get_display_outline_width())
+        if state.get("cached_preview_overlay_key") != overlay_key:
+            full_overlay = render_text_fields_overlay(render_width, render_height, fields, base_image=base_image, background_path=bg_path)
+            state["cached_preview_overlay_image"] = full_overlay.resize((preview_width, preview_height), Image.Resampling.LANCZOS) if full_overlay is not None else None
+            state["cached_preview_overlay_key"] = overlay_key
+        overlay_image = state.get("cached_preview_overlay_image")
         if overlay_image is None:
             return base_image
-        overlay_image = overlay_image.resize((preview_width, preview_height), Image.Resampling.LANCZOS)
         return Image.alpha_composite(base_image.convert("RGBA"), overlay_image).convert("RGB")
 
     def refresh_preview() -> None:

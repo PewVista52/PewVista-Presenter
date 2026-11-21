@@ -47,17 +47,24 @@ class LoopingVideoReader:
     Returns: Instances expose fps, path, frame_at_time(), next_frame(), and close().
     """
 
-    def __init__(self, path: str | Path, reader_kwargs: dict | None = None) -> None:
+    def __init__(self, path: str | Path, reader_kwargs: dict | None = None, preview_size: tuple[int, int] | None = (480, 270)) -> None:
         """What: Open the clip, read its first frame, and estimate its frame count.
 
         Why included: The estimate lets the next loop's decoder warm up before the end.
+        Downscaling inside FFmpeg via ``size`` avoids piping raw 1080p frames for small
+        in-app preview thumbnails, freeing CPU/GPU bandwidth for the Secondary Screen.
         Where used: Preview renderers when a video background becomes active.
         Returns: None; raises when imageio is unavailable or the clip cannot be decoded.
         """
         if imageio is None:
             raise RuntimeError("Video previews require imageio and imageio-ffmpeg in this app build.")
         self.path = str(path)
-        self._reader_kwargs = dict(reader_kwargs or {})
+        kwargs = dict(reader_kwargs or {})
+        if preview_size and "output_params" not in kwargs and "size" not in kwargs:
+            w = max(64, int(preview_size[0]))
+            h = max(36, int(preview_size[1]))
+            kwargs["output_params"] = ["-vf", f"scale='min({w},iw)':'min({h},ih)'"]
+        self._reader_kwargs = kwargs
         self._lock = threading.Lock()
         self._standby = None
         self._prewarming = False
@@ -95,11 +102,16 @@ class LoopingVideoReader:
     def _open_reader(self):
         """What: Start a decoder and read frame zero so it is ready to serve.
 
-        Why included: Warm readers make the loop swap immediate.
+        Why included: Warm readers make the loop swap immediate. Falls back without
+        ``output_params`` if a custom/test backend does not accept it.
         Where used: Construction, background prewarming, and synchronous fallback.
         Returns: An imageio reader positioned at the first frame.
         """
-        reader = imageio.get_reader(self.path, **self._reader_kwargs)
+        try:
+            reader = imageio.get_reader(self.path, **self._reader_kwargs)
+        except TypeError:
+            fallback_kwargs = {k: v for k, v in self._reader_kwargs.items() if k not in {"size", "output_params"}}
+            reader = imageio.get_reader(self.path, **fallback_kwargs)
         try:
             reader.get_data(0)
         except Exception:

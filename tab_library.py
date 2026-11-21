@@ -1176,6 +1176,8 @@ def build_library_tab(tab_frame: tk.Frame, context: dict[str, object]) -> None:
             corner_text,
             render_width,
             render_height,
+            preview_width,
+            preview_height,
             tuple(normalize_font_value(active_font_value)),
             get_display_outline_width(),
             get_display_text_color(),
@@ -1183,7 +1185,7 @@ def build_library_tab(tab_frame: tk.Frame, context: dict[str, object]) -> None:
             stroke_color,
         )
         if state.get("cached_text_overlay_key") == cache_key and state.get("cached_text_overlay_image") is not None:
-            full_overlay_image = state.get("cached_text_overlay_image")
+            overlay_image = state.get("cached_text_overlay_image")
         else:
             fitted_background = get_fitted_background_cached(source_image, bg_path, (render_width, render_height), is_video)
             layout = fit_overlay_layout(
@@ -1219,12 +1221,12 @@ def build_library_tab(tab_frame: tk.Frame, context: dict[str, object]) -> None:
                 corner_text=corner_text,
                 stroke_width=LIBRARY_PREVIEW_STROKE_WIDTH,
             )
+            overlay_image = full_overlay_image.resize((preview_width, preview_height), Image.Resampling.LANCZOS) if full_overlay_image is not None else None
             state["cached_text_overlay_key"] = cache_key
-            state["cached_text_overlay_image"] = full_overlay_image
+            state["cached_text_overlay_image"] = overlay_image
 
-        if full_overlay_image is None:
+        if overlay_image is None:
             return rendered_image
-        overlay_image = full_overlay_image.resize((preview_width, preview_height), Image.Resampling.LANCZOS)
         return Image.alpha_composite(rendered_image.convert("RGBA"), overlay_image).convert("RGB")
 
     def fit_preview_text_for_render(base_image, verse_text: str, font_value: tuple[str, int, str]):

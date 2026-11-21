@@ -617,11 +617,24 @@ function showVideo(path, state) {
     const nextIndex = 1 - activeVideoIndex;
     const nextVideo = videoLayers[nextIndex];
     const currentVideo = videoLayers[activeVideoIndex];
+    let activated = false;
+    let fallbackTimer = null;
     const activate = () => {
+        if (activated) {
+            return;
+        }
+        activated = true;
+        if (fallbackTimer !== null) {
+            window.clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+        }
+        nextVideo.onloadeddata = null;
+        nextVideo.oncanplay = null;
         placeLayerAbove(nextVideo, currentVideo);
         nextVideo.classList.add('active');
         window.requestAnimationFrame(() => {
             currentVideo.classList.remove('active');
+            currentVideo.pause();
         });
         imageLayers.forEach(resetLayer);
         activeVideoIndex = nextIndex;
@@ -632,19 +645,21 @@ function showVideo(path, state) {
         applyText(state);
     };
     nextVideo.onloadeddata = () => activate();
+    nextVideo.oncanplay = () => activate();
     nextVideo.onerror = () => {
+        if (fallbackTimer !== null) {
+            window.clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+        }
         clearMedia();
         applyText(state);
         scheduleMediaRetry();
     };
     nextVideo.pause();
-    nextVideo.removeAttribute('src');
-    nextVideo.load();
     nextVideo.src = mediaUrl(path, state.media_revision || state.revision);
-    nextVideo.currentTime = 0;
     nextVideo.load();
-    window.setTimeout(() => {
-        if (nextVideo.readyState >= 2) {
+    fallbackTimer = window.setTimeout(() => {
+        if (!activated && nextVideo.readyState >= 2) {
             activate();
         }
     }, 350);
@@ -706,7 +721,7 @@ async function pollState() {
     }
 }
 
-window.setInterval(pollState, 30);
+window.setInterval(pollState, 80);
 pollState();
 </script>
 </body>
@@ -884,6 +899,7 @@ class SecondaryStateServer:
         """
         self._state_lock = threading.Lock()
         self._overlay_image_png = b""
+        self._media_byte_cache: dict[str, tuple[int, int, bytes]] = {}
         self.last_state_poll = time.time()
         self._state = {
             "revision": 0,
@@ -1047,7 +1063,9 @@ class SecondaryStateServer:
                 """What: Stream an existing media file, honoring browser byte-range requests.
 
                 Why included: OBS video playback may request partial content rather than
-                downloading the entire file before playback.
+                downloading the entire file before playback. Active background media under
+                64 MB is cached in RAM so looping video range requests never contend for
+                disk I/O or GIL time with UI/preview threads.
                 Where used: do_GET() for /media?path=... requests.
                 Returns: None; sends 404 for absent paths and supports 206 responses.
                 """
@@ -1057,7 +1075,9 @@ class SecondaryStateServer:
                 content_type, _ = mimetypes.guess_type(str(media_path))
                 if not content_type:
                     content_type = "application/octet-stream"
-                file_size = media_path.stat().st_size
+                stat_info = media_path.stat()
+                file_size = stat_info.st_size
+                cached_bytes = outer._get_cached_media_bytes(media_path, stat_info.st_mtime_ns, file_size)
                 range_header = self.headers.get("Range")
                 start = 0
                 end = max(0, file_size - 1)
@@ -1081,6 +1101,10 @@ class SecondaryStateServer:
                     if status == HTTPStatus.PARTIAL_CONTENT:
                         self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
                     self.end_headers()
+                    if cached_bytes is not None:
+                        if chunk_size > 0:
+                            self.wfile.write(memoryview(cached_bytes)[start : end + 1])
+                        return
                     # Stream fixed-size chunks so a large media asset never has to fit in memory at once.
                     with media_path.open("rb") as media_file:
                         media_file.seek(start)
@@ -1106,6 +1130,31 @@ class SecondaryStateServer:
                 return
 
         return Handler
+
+    def _get_cached_media_bytes(self, media_path: Path, mtime_ns: int, file_size: int) -> bytes | None:
+        """What: Cache up to two active media files (<64 MB) in RAM for zero-disk-I/O video streaming.
+
+        Why included: Chromium's <video loop> issues repeated byte-range requests; serving from memory
+        eliminates disk seeks and GIL contention while video backgrounds play.
+        Where used: SecondaryStateServer._send_media().
+        Returns: Cached file bytes, or None if the file exceeds 64 MB or cannot be read.
+        """
+        if file_size <= 0 or file_size > 64 * 1024 * 1024:
+            return None
+        key = os.path.normcase(os.path.abspath(str(media_path)))
+        with self._state_lock:
+            cached = self._media_byte_cache.get(key)
+            if cached is not None and cached[0] == mtime_ns and cached[1] == file_size:
+                return cached[2]
+        try:
+            data = media_path.read_bytes()
+        except OSError:
+            return None
+        with self._state_lock:
+            if len(self._media_byte_cache) >= 2 and key not in self._media_byte_cache:
+                self._media_byte_cache.clear()
+            self._media_byte_cache[key] = (mtime_ns, file_size, data)
+        return data
 
     def get_state(self) -> dict:
         """What: Return a shallow snapshot of current renderer state under the lock.
@@ -1625,8 +1674,7 @@ class ObsSecondaryDisplayController:
         """What: Build OBS launch arguments and its executable working directory.
 
         Why included: OBS resolves bundled resources relative to bin/64bit, including when
-        the portable switch is enabled. GPU rasterization flags ensure Chromium/CEF offloads
-        the secondary display page and video decoding onto the GPU.
+        the portable switch is enabled.
         Where used: _launch_obs_if_needed() before subprocess.Popen().
         Returns: Command argument list and cwd Path.
         """
@@ -1634,10 +1682,6 @@ class ObsSecondaryDisplayController:
             str(obs_path),
             "--disable-shutdown-check",
             "--minimize-to-tray",
-            "--enable-gpu",
-            "--enable-gpu-rasterization",
-            "--enable-zero-copy",
-            "--ignore-gpu-blocklist",
         ]
         launch_arguments = self._launch_setting("launch_arguments")
         if isinstance(launch_arguments, list):
@@ -2052,10 +2096,11 @@ class ObsSecondaryDisplayController:
         self._ensure_canvas_frame_rate()
 
     def _ensure_canvas_frame_rate(self) -> None:
-        """What: Raise the OBS canvas to 60 FPS when a lower rate is configured.
+        """What: Configure the OBS canvas to 30 FPS for steady video pacing on integrated GPUs.
 
-        Why included: Scrolling text animates in the browser source, but the projector
-        can only show frames at the canvas rate; OBS defaults to 30 FPS.
+        Why included: 60 FPS doubles D3D11/CEF texture copies and causes severe frame drops
+        when 24/30 FPS background videos play on integrated GPUs (such as AMD Radeon Vega 3)
+        or wireless displays.
         Where used: _ensure_client() immediately after a websocket connection exists.
         Returns: None; failures are logged and never block output setup.
         """
@@ -2063,17 +2108,17 @@ class ObsSecondaryDisplayController:
             current = self._request("GetVideoSettings")
             numerator = int(current.get("fpsNumerator") or 0)
             denominator = max(1, int(current.get("fpsDenominator") or 1))
-            if numerator / denominator >= 59.0:
+            if 29.0 <= (numerator / denominator) <= 31.0:
                 return
             self._request("SetVideoSettings", {
-                "fpsNumerator": 60,
+                "fpsNumerator": 30,
                 "fpsDenominator": 1,
                 "baseWidth": int(current.get("baseWidth") or 1920),
                 "baseHeight": int(current.get("baseHeight") or 1080),
                 "outputWidth": int(current.get("outputWidth") or 1920),
                 "outputHeight": int(current.get("outputHeight") or 1080),
             })
-            log_error("obs_secondary_display.canvas_fps", f"Raised OBS canvas from {numerator}/{denominator} to 60 FPS for smooth scrolling.")
+            log_error("obs_secondary_display.canvas_fps", f"Set OBS canvas from {numerator}/{denominator} to 30 FPS for smooth video playback.")
         except Exception as error:
             log_exception("obs_secondary_display.canvas_fps", error)
 
@@ -2177,7 +2222,7 @@ class ObsSecondaryDisplayController:
             "restart_when_active": False,
             "reroute_audio": False,
             "fps_custom": True,
-            "fps": 60,
+            "fps": 30,
         }
 
     def _ensure_runtime(self) -> None:

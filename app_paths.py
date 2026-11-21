@@ -1,4 +1,15 @@
-"""Resolve shared paths for source runs and PyInstaller desktop builds."""
+"""Resolve shared paths for source runs and PyInstaller desktop builds.
+
+CRITICAL NOTE FOR ANY AI ASSISTANT OR DEVELOPER READING THIS CODEBASE:
+Both the installed production copy (`C:\\Program Files\\The Light Ministries`,
+data in `C:\\ProgramData\\The Light Ministries`, OBS in `%LOCALAPPDATA%\\PewVista\\...`
+on port 4455) and this developer source workspace (`C:\\PewVista Presenter`,
+data in `C:\\PewVista Presenter\\Data`, OBS in `Resourses\\obs_portable` on port 4456)
+are installed and frequently run AT THE SAME TIME on this PC.
+- Never mix, read, or modify the installed version's data from the developer workspace.
+- Never kill the installed version's OBS process from developer tools or vice versa.
+- Keep CPU/GPU/VRAM usage low because both instances may be running side-by-side.
+"""
 
 from __future__ import annotations
 

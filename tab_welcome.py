@@ -1270,19 +1270,6 @@ def build_welcome_tab(tab_frame: tk.Frame, context: dict[str, object]) -> None:
             setattr(rendered_image, "_background_path", bg_path)
         if not preview_text.strip() or ImageDraw is None or ImageFont is None:
             return rendered_image
-        if not is_preview_scroll_active():
-            bounds = get_display_bounds() if callable(get_display_bounds) else {}
-            render_width = int((bounds or {}).get("width") or 1920)
-            render_height = int((bounds or {}).get("height") or 1080)
-            fields = build_sized_text_fields("welcome", preview_text, font_value, get_preview_text_sections())
-            key = (repr(fields), str(state.get("background_path") or ""), render_width, render_height, get_display_outline_width(), choose_preview_text_colors(rendered_image))
-            if state.get("cached_text_overlay_key") != key:
-                state["cached_text_overlay_image"] = render_text_fields_overlay(render_width, render_height, fields, base_image=rendered_image, background_path=bg_path)
-                state["cached_text_overlay_key"] = key
-            overlay = state.get("cached_text_overlay_image")
-            if overlay is not None:
-                overlay = overlay.resize((preview_width, preview_height), Image.Resampling.LANCZOS)
-                return Image.alpha_composite(rendered_image.convert("RGBA"), overlay).convert("RGB")
         if is_preview_scroll_active():
             bounds = get_display_bounds() if callable(get_display_bounds) else {}
             rendered, cycle_height = render_scrolling_preview(
@@ -1296,6 +1283,26 @@ def build_welcome_tab(tab_frame: tk.Frame, context: dict[str, object]) -> None:
             state["preview_scroll_cycle_height"] = cycle_height
             return rendered
         state["preview_scroll_cycle_height"] = 0
+        if bg_path:
+            colors_cache_key = (bg_path, preview_width, preview_height)
+            if state.get("cached_bg_colors_key") != colors_cache_key:
+                state["cached_bg_colors_val"] = choose_preview_text_colors(rendered_image)
+                state["cached_bg_colors_key"] = colors_cache_key
+            text_colors = state["cached_bg_colors_val"]
+        else:
+            text_colors = choose_preview_text_colors(rendered_image)
+        bounds = get_display_bounds() if callable(get_display_bounds) else {}
+        render_width = int((bounds or {}).get("width") or 1920)
+        render_height = int((bounds or {}).get("height") or 1080)
+        fields = build_sized_text_fields("welcome", preview_text, font_value, get_preview_text_sections())
+        key = (repr(fields), str(state.get("background_path") or ""), render_width, render_height, preview_width, preview_height, get_display_outline_width(), text_colors)
+        if state.get("cached_text_overlay_key") != key:
+            full_overlay = render_text_fields_overlay(render_width, render_height, fields, base_image=rendered_image, background_path=bg_path)
+            state["cached_text_overlay_image"] = full_overlay.resize((preview_width, preview_height), Image.Resampling.LANCZOS) if full_overlay is not None else None
+            state["cached_text_overlay_key"] = key
+        overlay = state.get("cached_text_overlay_image")
+        if overlay is not None:
+            return Image.alpha_composite(rendered_image.convert("RGBA"), overlay).convert("RGB")
         display_bounds = get_display_bounds() if callable(get_display_bounds) else None
         render_width = max(1, int((display_bounds or {}).get("width") or 1920))
         render_height = max(1, int((display_bounds or {}).get("height") or 1080))

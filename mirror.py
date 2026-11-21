@@ -1332,9 +1332,11 @@ class MirrorDisplayController:
                     self.preview_video_path = ""
 
     def schedule_preview_video_animation(self) -> None:
-        """What: Schedule local video-frame rendering at a capped 15 FPS.
+        """What: Schedule local video-frame rendering at a capped frame rate.
 
         Why included: MP4 backgrounds need motion in the preview without starting parallel renders.
+        When the external Secondary Screen is active, the local thumbnail steps down to ~8 FPS
+        so FFmpeg CPU decoding does not contend with OBS's full-screen video playback.
         Where used: sync_preview_animations() after preview image application.
         Returns: None; decoding remains in the existing preview background worker.
         """
@@ -1355,7 +1357,8 @@ class MirrorDisplayController:
                 self.render_preview()
             self.schedule_preview_video_animation()
 
-        self.preview_video_after_id = self.preview_label.after(67, advance_video)
+        delay_ms = 125 if bool(self.enabled_var.get()) else 80
+        self.preview_video_after_id = self.preview_label.after(delay_ms, advance_video)
 
     def sync_preview_animations(self) -> None:
         """What: Start or cancel scrolling and GIF timers based on current state.

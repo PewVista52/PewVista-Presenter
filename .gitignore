@@ -16,6 +16,7 @@ Data/.import-backups/
 Data/.background-migration-backups/
 Data/license.json
 Data/license.json.tmp
+Data/live_pricing.json
 Data/display_queue_bridge.json
 Data/obs_secondary_settings.json
 Data/music_licenses.json

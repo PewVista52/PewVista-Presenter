@@ -136,7 +136,7 @@ if errorlevel 1 (
 
 echo Syncing Data...
 rem Seed only missing files so operational app data is never overwritten by source copies.
-robocopy "%ROOT_DIR%Data" "%DIST_APP_DIR%\Data" /E /XC /XN /XO /NP /NFL /NDL /R:1 /W:1 /XD "%ROOT_DIR%Data\Backgrounds" "%ROOT_DIR%Data\.backups" "%ROOT_DIR%Data\.import-backups" "%ROOT_DIR%Data\.background-migration-backups" /XF *.db *.db-wal *.db-shm *.db-journal members.key *.log display_queue_bridge.json bible_settings.json music_licenses.json obs_secondary_settings.json branding.json license.json license.json.tmp .background-migration.json >nul 2>&1
+robocopy "%ROOT_DIR%Data" "%DIST_APP_DIR%\Data" /E /XC /XN /XO /NP /NFL /NDL /R:1 /W:1 /XD "%ROOT_DIR%Data\Backgrounds" "%ROOT_DIR%Data\.backups" "%ROOT_DIR%Data\.import-backups" "%ROOT_DIR%Data\.background-migration-backups" /XF *.db *.db-wal *.db-shm *.db-journal members.key *.log display_queue_bridge.json bible_settings.json music_licenses.json obs_secondary_settings.json branding.json license.json license.json.tmp live_pricing.json .background-migration.json >nul 2>&1
 
 echo Syncing Resourses...
 rem OBS is not shipped: Setup reuses an installed OBS or downloads the official build.

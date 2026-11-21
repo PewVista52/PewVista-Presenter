@@ -31,9 +31,9 @@ PewVista may implement technical measures designed to prevent repeated trial use
 
 2.2 Price
 
-A PewVista subscription costs {PRICE}, or the equivalent amount in South African Rand when paying directly to PewVista.
+A PewVista base subscription costs {PRICE}, with optional screen and device add-ons priced according to the customer's selected setup.
 
-The customer remains responsible for any bank fees, PayPal fees, transfer costs, exchange rate charges, or other fees imposed by the customer's financial institution or payment provider.
+The customer remains responsible for any bank fees, Paystack fees, transfer costs, exchange rate charges, or other fees imposed by the customer's financial institution or payment provider.
 
 Where PewVista is legally required to charge VAT or other taxes, such charges will be reflected on the customer's invoice.
 
@@ -43,26 +43,26 @@ Any revised pricing applies only to future subscription periods and never to an 
 
 2.3 What a Subscription Covers
 
-One subscription covers:
+One base subscription covers:
 
 - One church, ministry, organization, business, or customer account.
-- Activation on up to two (2) PCs simultaneously.
+- Activation on one (1) PC or Android device (or the exact number of PC/Android devices and screen capacities selected and paid for in the customer's plan).
 
-Additional PCs require additional subscriptions unless otherwise agreed in writing.
+Additional PC/Android devices or screen capacities can be selected when purchasing a subscription, or added at any time during an active subscription for the remaining days of the paid period (charged pro-rata for the remaining days without affecting existing connected devices or connection settings).
 
 A license may be transferred to another PC by:
 
-- Removing the license from the previous PC using: Help → License and Subscription → Remove from this PC, or
+- Removing the license from the previous PC using: License and Subscription → Remove from this PC, or
 - Requesting a replacement activation code from PewVista.
 
 2.4 Payment Methods
-(a) PayPal Subscription
+(a) Paystack Subscription or Online Payment
 
-Where available, subscriptions may be purchased through PayPal.
+Where available, subscriptions and payments may be processed online through Paystack.
 
-Payments are collected monthly in advance.
+Payments are collected in advance.
 
-PewVista activates the subscription using the PayPal subscription identifier.
+PewVista activates the subscription using the Paystack subscription code, payment reference, or issued license code.
 
 (b) Direct Payment
 
@@ -81,15 +81,15 @@ After payment is received and verified, PewVista will issue license code(s) for 
 
 The customer must provide the PC ID shown in:
 
-Help → License and Subscription → Copy ID
+License and Subscription → Copy ID
 
 for each PC requiring activation.
 
 2.5 Renewal
 
-PayPal subscriptions renew automatically each month until canceled.
+Paystack recurring subscriptions renew automatically until canceled.
 
-Licenses obtained through direct payment do not renew automatically.
+Licenses obtained through once-off or direct payment do not renew automatically.
 
 Once a license expires, a new payment and new license code are required to continue using the subscription features.
 
@@ -97,9 +97,9 @@ PewVista may send reminders before expiry but is under no obligation to do so.
 
 2.6 Internet Connection
 
-A PC activated through a PayPal subscription must connect to the internet at least once every thirty (30) days for subscription verification.
+An internet connection is required when purchasing or activating a subscription online through Paystack (at which time PewVista also retrieves the current subscription pricing from the online release feed).
 
-Licenses issued through direct payment continue working offline until their expiry date.
+Once a license is activated on a PC, it continues working offline until the end of the paid subscription period.
 
 2.7 Non-Payment and Restarting a Subscription
 
@@ -107,7 +107,7 @@ If payment has not been received by the end of the paid period, the subscription
 
 No additional cancellation notice is required.
 
-The same applies where a PayPal payment fails, is reversed (including because of a dispute), or otherwise becomes invalid.
+The same applies where a Paystack or bank payment fails, is reversed (including because of a dispute or chargeback), or otherwise becomes invalid.
 
 Following cancellation or expiry:
 
@@ -134,7 +134,7 @@ Unpaid periods are not charged retrospectively.
 
 Customers may cancel:
 
-- Through their PayPal account, where using PayPal.
+- Through their Paystack subscription management link or email, where using Paystack.
 - By written notice sent to PewVista.
 
 Cancellation prevents future billing.

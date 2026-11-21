@@ -43,7 +43,8 @@ CONTENTS
   - Actions: saved services and quick actions for the current service.
 - Bottom area: the content tabs - Display, Welcome, Library, Preparation,
   Bible, Add Bible, and Translation.
-- Menu bar: Settings, History, Licenses, Data, Members, and Help.
+- Menu bar: Settings, History, Licenses, Data, Members, License and
+  Subscription, and Help.
 
 3. PLANNING A SERVICE (INFO PANEL)
 - Choose the service date with the calendar (clicking a day or Apply
@@ -217,16 +218,38 @@ CONTENTS
 
 19. LICENSE AND SUBSCRIPTION
 - PewVista starts with a 15-day free trial on each PC.
-- A subscription costs {PRICE} and covers 2 PCs.
-- Open Help > License and Subscription... to see the license status.
+- A base subscription costs {PRICE} (1 PC/Android device and 1 Secondary
+  Screen). Churches select 1 or more PC/Android devices on their license
+  (each extra device adds its monthly rate, shown next to the selector).
+  Additional screen and wireless device options only become selectable
+  once those features are released.
+- Click License and Subscription in the menu bar (between Members and
+  Help) to see the license status, choose the subscription period and
+  number of devices/services, and see the exact price next to each
+  selected item. When connected to the internet, the window automatically
+  loads the latest subscription pricing from the online release feed (no
+  software update is needed when prices change).
+- Adding Devices to Your Current License (Remaining Period):
+  - Churches can add extra PC/Android devices (or unlocked services) to
+    their active license at any time for the remaining days of their paid
+    license period.
+  - In License and Subscription, choose "Remaining on current license" in
+    Subscription Period and increase the PC / Android Devices count. Only
+    the pro-rated difference for the remaining days is charged, and your
+    existing connection type and connected devices stay untouched.
 - How to Get a License explains the steps. In short:
-  - Pay PewVista (EFT; email pewvista52@gmail.com for banking details).
-  - Click Copy ID and send the copied text (church name and PC ID) with
-    your proof of payment to PewVista. Do this on each PC.
-  - Paste the license code you receive into the box and click Activate.
-- PayPal subscriptions: enter the subscription ID PayPal emails you
-  (starts with I-) and click Activate, where available. These PCs must
-  connect to the internet at least once every 30 days.
+  - Subscribe or pay online through Paystack using Subscribe with Paystack
+    (supports card, Instant EFT, and SnapScan), or pay PewVista directly
+    by EFT (email pewvista52@gmail.com if you need assistance).
+  - For online Paystack payments, enter the Paystack subscription code
+    (starts with SUB_) or payment reference in the box and click Activate.
+  - For direct payment or offline activation, click Copy ID and send the
+    copied text (church name, PC ID, and selected plan) with your payment
+    reference to PewVista on each PC, then paste the license code you
+    receive into the box and click Activate.
+  - An internet connection is only needed when buying or activating a
+    license. Once activated, PewVista works completely offline for the
+    full licensed period (1, 3, 6, or 12 months).
 - Without a license, PewVista keeps working, but the live screen shows a
   red NOT LICENSED marking. Your data is never deleted.
 - Remove from this PC frees the license so it can be used on another PC.

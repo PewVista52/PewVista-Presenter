@@ -1548,7 +1548,7 @@ def build_welcome_tab(tab_frame: tk.Frame, context: dict[str, object]) -> None:
         render_background_preview(preview_container, preview_label)
         schedule_preview_scroll_animation(preview_container, preview_label)
 
-    def schedule_preview_refresh(preview_container: tk.Frame, preview_label: tk.Label, welcome_text: tk.Text, delay_ms: int = 60) -> None:
+    def schedule_preview_refresh(preview_container: tk.Frame, preview_label: tk.Label, welcome_text: tk.Text, delay_ms: int = 220) -> None:
         """What: Debounce a Welcome preview refresh through the Tk event loop.
 
         Why included: Rapid edits should coalesce into one render and inactive tabs should stay idle.

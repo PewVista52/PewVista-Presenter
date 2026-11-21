@@ -419,22 +419,12 @@ function showOverlayImage(state) {
         scheduleMediaRetry();
     };
     const nextUrl = '/overlay.png?rev=' + encodeURIComponent(String(nextOverlayRevision));
-    const assignNextLayer = () => {
-        primaryOverlayImageLayer.onload = () => activate();
-        primaryOverlayImageLayer.onerror = () => fail();
-        primaryOverlayImageLayer.src = nextUrl;
-        if (primaryOverlayImageLayer.complete) {
-            if (typeof primaryOverlayImageLayer.decode === 'function') {
-                primaryOverlayImageLayer.decode().then(() => activate()).catch(() => activate());
-            } else {
-                activate();
-            }
-        }
-    };
-    const preload = new Image();
-    preload.onload = () => assignNextLayer();
-    preload.onerror = () => fail();
-    preload.src = nextUrl;
+    primaryOverlayImageLayer.onload = () => activate();
+    primaryOverlayImageLayer.onerror = () => fail();
+    primaryOverlayImageLayer.src = nextUrl;
+    if (primaryOverlayImageLayer.complete) {
+        activate();
+    }
 }
 
 function applyText(state) {
@@ -615,22 +605,12 @@ function showImage(path, state) {
         applyText(state);
         scheduleMediaRetry();
     };
-    const assignNextImage = () => {
-        primaryImageLayer.onload = () => activate();
-        primaryImageLayer.onerror = () => fail();
-        primaryImageLayer.src = nextUrl;
-        if (primaryImageLayer.complete) {
-            if (typeof primaryImageLayer.decode === 'function') {
-                primaryImageLayer.decode().then(() => activate()).catch(() => activate());
-            } else {
-                activate();
-            }
-        }
-    };
-    const preload = new Image();
-    preload.onload = () => assignNextImage();
-    preload.onerror = () => fail();
-    preload.src = nextUrl;
+    primaryImageLayer.onload = () => activate();
+    primaryImageLayer.onerror = () => fail();
+    primaryImageLayer.src = nextUrl;
+    if (primaryImageLayer.complete) {
+        activate();
+    }
 }
 
 function showVideo(path, state) {
@@ -1505,10 +1485,11 @@ class ObsSecondaryDisplayController:
         return self._portable_obs_root_path() / "config" / "obs-studio" / "plugin_config" / "obs-websocket" / "config.json"
 
     def _disable_obs_auto_updates(self) -> None:
-        """What: Turn off OBS's own update check in the private OBS profile.
+        """What: Turn off OBS's auto-updater, main-window preview, and force Direct3D 11 + Browser GPU acceleration.
 
-        Why included: PewVista ships and updates its own copy of OBS; OBS's updater
-        otherwise shows an update window every time PewVista starts the live screen.
+        Why included: PewVista ships its own OBS; forcing BrowserHWAccel=true and
+        Renderer=Direct3D 11 shifts rendering onto the GPU, while PreviewEnabled=false
+        stops OBS from drawing a hidden second copy of the canvas in the system tray.
         Where used: _configure_portable_obs_websocket() before every OBS launch.
         Returns: None; failures are logged and never block the live screen.
         """
@@ -1518,15 +1499,68 @@ class ObsSecondaryDisplayController:
             ini_path = profile / ini_name
             try:
                 lines = ini_path.read_text(encoding="utf-8-sig").splitlines() if ini_path.is_file() else []
-                lines = [line for line in lines if not line.strip().lower().startswith("enableautoupdates=")]
+                drop_prefixes = ("enableautoupdates=", "browserhwaccel=", "renderer=", "previewenabled=")
+                lines = [line for line in lines if not line.strip().lower().startswith(drop_prefixes)]
                 if "[General]" in lines:
-                    lines.insert(lines.index("[General]") + 1, "EnableAutoUpdates=false")
+                    idx = lines.index("[General]") + 1
+                    lines.insert(idx, "BrowserHWAccel=true")
+                    lines.insert(idx, "EnableAutoUpdates=false")
                 else:
-                    lines = ["[General]", "EnableAutoUpdates=false"] + ([""] + lines if lines else [])
+                    lines = ["[General]", "EnableAutoUpdates=false", "BrowserHWAccel=true"] + ([""] + lines if lines else [])
+                if "[Video]" in lines:
+                    lines.insert(lines.index("[Video]") + 1, "Renderer=Direct3D 11")
+                else:
+                    lines.extend(["", "[Video]", "Renderer=Direct3D 11"])
+                if "[BasicWindow]" in lines:
+                    lines.insert(lines.index("[BasicWindow]") + 1, "PreviewEnabled=false")
+                else:
+                    lines.extend(["", "[BasicWindow]", "PreviewEnabled=false"])
                 ini_path.parent.mkdir(parents=True, exist_ok=True)
                 ini_path.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
             except OSError as error:
                 log_exception("obs_secondary_display.disable_auto_updates", error, details=str(ini_path))
+        # Disable unused Desktop Audio and Mic/Aux capture in the portable scene collection so OBS
+        # does not buffer audio or use CPU when Windows display/audio endpoints change.
+        scene_file = profile / "basic" / "scenes" / "Untitled.json"
+        if scene_file.is_file():
+            try:
+                scene_data = json.loads(scene_file.read_text(encoding="utf-8"))
+                if isinstance(scene_data, dict):
+                    changed = False
+                    for audio_key in ("DesktopAudioDevice1", "DesktopAudioDevice2", "AuxAudioDevice1", "AuxAudioDevice2"):
+                        if audio_key in scene_data:
+                            scene_data.pop(audio_key, None)
+                            changed = True
+                    if changed:
+                        scene_file.write_text(json.dumps(scene_data, indent=2), encoding="utf-8")
+            except (OSError, ValueError):
+                pass
+
+    def _register_windows_high_performance_gpu(self, obs_path: Path) -> None:
+        """What: Register obs64.exe and PewVista.exe for High Performance GPU preference in Windows DirectX.
+
+        Why included: Tells Windows 10/11 DirectX to assign the GPU (GpuPreference=2) to OBS
+        and PewVista instead of power-saving CPU/software fallback.
+        Where used: _configure_portable_obs_websocket() before starting OBS.
+        """
+        if sys.platform != "win32":
+            return
+        try:
+            import winreg
+            key_path = r"Software\Microsoft\DirectX\UserGpuPreferences"
+            targets = [str(Path(obs_path).resolve())]
+            if getattr(sys, "frozen", False):
+                targets.append(str(Path(sys.executable).resolve()))
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as reg_key:
+                for exe_path in targets:
+                    try:
+                        current_val, _ = winreg.QueryValueEx(reg_key, exe_path)
+                    except OSError:
+                        current_val = ""
+                    if "GpuPreference=2" not in str(current_val):
+                        winreg.SetValueEx(reg_key, exe_path, 0, winreg.REG_SZ, "GpuPreference=2;")
+        except Exception:
+            pass
 
     def _configure_portable_obs_websocket(self, obs_path: Path) -> None:
         """What: Enable the portable websocket server and write configured port/auth settings.
@@ -1539,6 +1573,7 @@ class ObsSecondaryDisplayController:
         if not self._is_portable_obs_path(obs_path):
             return
         self._disable_obs_auto_updates()
+        self._register_windows_high_performance_gpu(obs_path)
         config_path = self._portable_obs_websocket_config_path()
         config_path.parent.mkdir(parents=True, exist_ok=True)
         existing_config: dict = {}
@@ -1590,11 +1625,20 @@ class ObsSecondaryDisplayController:
         """What: Build OBS launch arguments and its executable working directory.
 
         Why included: OBS resolves bundled resources relative to bin/64bit, including when
-        the portable switch is enabled.
+        the portable switch is enabled. GPU rasterization flags ensure Chromium/CEF offloads
+        the secondary display page and video decoding onto the GPU.
         Where used: _launch_obs_if_needed() before subprocess.Popen().
         Returns: Command argument list and cwd Path.
         """
-        command = [str(obs_path), "--disable-shutdown-check", "--minimize-to-tray"]
+        command = [
+            str(obs_path),
+            "--disable-shutdown-check",
+            "--minimize-to-tray",
+            "--enable-gpu",
+            "--enable-gpu-rasterization",
+            "--enable-zero-copy",
+            "--ignore-gpu-blocklist",
+        ]
         launch_arguments = self._launch_setting("launch_arguments")
         if isinstance(launch_arguments, list):
             command.extend(str(argument) for argument in launch_arguments if str(argument).strip() and str(argument) not in command)
@@ -2472,21 +2516,29 @@ class ObsSecondaryDisplayController:
         render_height = max(1, int(display_bounds.get("height") or 1080))
         fitted_background = None
         if Image is not None and ImageOps is not None and resolved_background_path and resolved_background_path.exists():
-            try:
-                if resolved_background_path.suffix.lower() in VIDEO_EXTENSIONS:
-                    fitted_background = Image.new("RGB", (render_width, render_height), "#000000") if Image is not None else None
-                else:
-                    with Image.open(resolved_background_path) as source_image:
-                        oriented_image = ImageOps.exif_transpose(source_image).convert("RGB")
-                        fit_background = ImageOps.pad if oriented_image.width < oriented_image.height else ImageOps.fit
-                        fitted_background = fit_background(
-                            oriented_image,
-                            (render_width, render_height),
-                            method=Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS,
-                        )
-            except Exception as error:
-                log_exception("obs_secondary_display._build_state", error, details=f"background={resolved_background_path}")
-                fitted_background = None
+            bg_cache_key = (str(resolved_background_path), render_width, render_height)
+            cached_bg = getattr(self, "_cached_fitted_bg", None)
+            if isinstance(cached_bg, tuple) and len(cached_bg) == 2 and cached_bg[0] == bg_cache_key:
+                fitted_background = cached_bg[1]
+            else:
+                try:
+                    if resolved_background_path.suffix.lower() in VIDEO_EXTENSIONS:
+                        fitted_background = Image.new("RGB", (render_width, render_height), "#000000") if Image is not None else None
+                    else:
+                        with Image.open(resolved_background_path) as source_image:
+                            oriented_image = ImageOps.exif_transpose(source_image).convert("RGB")
+                            fit_background = ImageOps.pad if oriented_image.width < oriented_image.height else ImageOps.fit
+                            fitted_background = fit_background(
+                                oriented_image,
+                                (render_width, render_height),
+                                method=Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS,
+                            )
+                    if fitted_background is not None:
+                        setattr(fitted_background, "_background_path", str(resolved_background_path))
+                        self._cached_fitted_bg = (bg_cache_key, fitted_background)
+                except Exception as error:
+                    log_exception("obs_secondary_display._build_state", error, details=f"background={resolved_background_path}")
+                    fitted_background = None
         if fitted_background is not None and resolved_background_path:
             setattr(fitted_background, "_background_path", str(resolved_background_path))
         source_key = str(self.current_overlay_source or "").casefold()

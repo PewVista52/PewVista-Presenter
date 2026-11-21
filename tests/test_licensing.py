@@ -99,19 +99,166 @@ class LicensingTests(unittest.TestCase):
                 with self.assertRaises(licensing.LicenseError):
                     licensing.install_token(bad)
 
-    def test_manual_code_activates_offline(self) -> None:
-        code = licensing.issue_manual_token(MACHINE, "Grace Church", days=31, private_key=self.key)
+    def test_manual_code_activates_offline_and_carries_modular_capabilities(self) -> None:
+        caps = licensing.LicenseCapabilities(
+            max_devices=4,
+            fixed_secondary_screens=2,
+            fixed_sub_secondary_screens=1,
+            wireless_devices=4,
+            wireless_operator_controller=True,
+            private_screen=True,
+        )
+        code = licensing.issue_manual_token(
+            MACHINE,
+            "Grace Church",
+            days=31,
+            private_key=self.key,
+            subscription_id="SUB_PAYSTACK99",
+            capabilities=caps,
+        )
         with patch.object(licensing, "LICENSE_SERVER_URL", ""):
             status = licensing.activate_subscription(code)
         self.assertEqual(status.state, "licensed")
-        self.assertTrue(status.subscription_id.startswith("MANUAL-GRACECHURCH"))
+        self.assertEqual(status.subscription_id, "SUB_PAYSTACK99")
+        self.assertEqual(status.capabilities, caps)
+        self.assertEqual(licensing.calculate_modular_price_zar(caps), 200 + (3 * 75) + 50 + 50 + (4 * 25) + 75 + 50)
+
+    def test_paystack_license_server_checkout_activation_device_limit_and_webhook(self) -> None:
+        import hashlib
+        import hmac
+        import paystack_license_server as pls
+
+        service = pls.PaystackLicenseService(
+            db_path=self.data / "server.db",
+            private_key=self.key,
+            secret_key="sk_test_123456",
+        )
+        caps = licensing.LicenseCapabilities(
+            max_devices=2,
+            fixed_secondary_screens=1,
+            fixed_sub_secondary_screens=1,
+            wireless_devices=2,
+            wireless_operator_controller=True,
+            private_screen=False,
+        )
+        with patch.object(licensing, "verify_paystack_reference") as mock_verify:
+            mock_verify.return_value = {
+                "kind": "transaction",
+                "valid": True,
+                "status": "success",
+                "reference": "REF_CHURCH_1",
+                "customer_name": "Grace Church",
+                "customer_email": "info@grace.org.za",
+                "amount_zar": 375.0,
+                "currency": "ZAR",
+                "days": 31,
+                "capabilities": caps,
+            }
+            reply1 = service.activate_or_refresh({"subscription_id": "ref_church_1", "machine_id": MACHINE})
+            self.assertIn("token", reply1)
+            status = licensing.install_token(str(reply1["token"]))
+            self.assertEqual(status.state, "licensed")
+            self.assertEqual(status.capabilities, caps)
+
+            # Second PC succeeds (up to max_devices=2)
+            reply2 = service.activate_or_refresh({"subscription_id": "REF_CHURCH_1", "machine_id": "b" * 32})
+            self.assertIn("token", reply2)
+
+            # Third PC is rejected until one PC deactivates
+            reply3 = service.activate_or_refresh({"subscription_id": "REF_CHURCH_1", "machine_id": "c" * 32})
+            self.assertIn("error", reply3)
+            self.assertIn("2 PCs", str(reply3["error"]))
+
+            service.deactivate({"subscription_id": "REF_CHURCH_1", "machine_id": "b" * 32})
+            reply4 = service.activate_or_refresh({"subscription_id": "REF_CHURCH_1", "machine_id": "c" * 32})
+            self.assertIn("token", reply4)
+
+        # Webhook signature verification and subscription revocation
+        webhook_payload = json.dumps({
+            "event": "subscription.disable",
+            "data": {"subscription_code": "REF_CHURCH_1", "customer": {"email": "info@grace.org.za"}},
+        }).encode("utf-8")
+        bad_code, _ = service.handle_webhook(webhook_payload, "bad_sig")
+        self.assertEqual(bad_code, 401)
+        valid_sig = hmac.new(b"sk_test_123456", webhook_payload, hashlib.sha512).hexdigest()
+        ok_code, _ = service.handle_webhook(webhook_payload, valid_sig)
+        self.assertEqual(ok_code, 200)
 
     def test_license_request_round_trip(self) -> None:
-        request = licensing.build_license_request(" Grace   Church ", MACHINE)
+        request = licensing.build_license_request(" Grace   Church ", MACHINE, billing_months=6)
         self.assertEqual(licensing.parse_license_request(request), (MACHINE, "Grace Church"))
+        details = licensing.parse_license_request_details(request)
+        self.assertEqual(details["billing_months"], 6)
         self.assertEqual(licensing.parse_license_request(MACHINE.upper()), (MACHINE, ""))
         self.assertEqual(licensing.parse_license_request(licensing.build_license_request("", MACHINE)), (MACHINE, ""))
         self.assertEqual(licensing.parse_license_request("hello"), ("", ""))
+
+    def test_unbuilt_services_are_clamped_and_discounts_encoded_in_token(self) -> None:
+        raw_caps = licensing.LicenseCapabilities(
+            max_devices=1,
+            fixed_secondary_screens=3,
+            fixed_sub_secondary_screens=2,
+            wireless_devices=5,
+            wireless_operator_controller=True,
+            private_screen=True,
+        )
+        # While available_services has all add-ons False, clamping resets them to Base (1 PC, 1 Secondary)
+        clamped = raw_caps.clamped_to_available_services({
+            "extra_secondary_screen": False,
+            "sub_secondary_screen": False,
+            "wireless_device": False,
+            "wireless_operator_controller": False,
+            "private_screen": False,
+        })
+        self.assertEqual(clamped, licensing.LicenseCapabilities(max_devices=1))
+        # 12-month license with 15% discount: R200 * 12 = R2400 - 15% (R360) = R2040
+        pricing = licensing.calculate_license_pricing(clamped, billing_months=12)
+        self.assertEqual(pricing["total_zar"], 2040)
+        self.assertEqual(pricing["discount_percent"], 15)
+        code = licensing.issue_manual_token(
+            MACHINE,
+            "Grace Church",
+            days=366,
+            private_key=self.key,
+            capabilities=raw_caps,
+            enforce_available_services=True,
+        )
+        status = licensing.install_token(code)
+        self.assertEqual(status.capabilities, licensing.LicenseCapabilities())
+        self.assertIn("R2040.00 for 1 year", status.pricing_summary)
+
+    def test_addon_upgrade_for_remaining_days_preserves_existing_devices(self) -> None:
+        current_caps = licensing.LicenseCapabilities(max_devices=1, fixed_secondary_screens=1)
+        target_caps = licensing.LicenseCapabilities(max_devices=3, fixed_secondary_screens=1)
+        # 15 days left of 31-day month, adding 2 extra main devices (+R75/mo each = +R150/mo)
+        upgrade = licensing.calculate_addon_upgrade_pricing(
+            current_caps,
+            target_caps,
+            remaining_days=15,
+            clamp_unbuilt=True,
+        )
+        self.assertEqual(upgrade["added_devices"], 2)
+        self.assertEqual(upgrade["delta_monthly_zar"], 150)
+        self.assertEqual(upgrade["total_zar"], round(150 * (15 / 31.0)))
+        self.assertEqual(upgrade["merged_capabilities"].max_devices, 3)
+
+        # Round-trip add-on request text preserves remaining days and merged device count
+        active_status = licensing.LicenseStatus(
+            state="licensed",
+            days_left=15,
+            subscription_id="SUB_1",
+            valid_until="2026-11-16T12:00:00+00:00",
+            capabilities=current_caps,
+        )
+        req_text = licensing.build_license_request(
+            "Grace Church",
+            MACHINE,
+            capabilities=target_caps,
+            current_status=active_status,
+        )
+        parsed = licensing.parse_license_request_details(req_text)
+        self.assertEqual(parsed["remaining_days"], 15)
+        self.assertEqual(parsed["capabilities"].max_devices, 3)
 
     def test_subscription_id_without_server_gives_clear_error(self) -> None:
         with patch.object(licensing, "LICENSE_SERVER_URL", ""):

@@ -2717,7 +2717,7 @@ def build_ui() -> tk.Tk:
         ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side="right")
 
     def open_license_dialog() -> None:
-        """What: Show the license state and let the church activate, subscribe, or free a PC.
+        """What: Show the license state and let the church activate, subscribe via Paystack, or free a PC.
 
         Why included: Subscriptions are activated per PC; the red secondary-screen marking
         disappears as soon as a valid license is saved.
@@ -2733,54 +2733,296 @@ def build_ui() -> tk.Tk:
         body.pack(fill="both", expand=True)
         body.columnconfigure(0, weight=1)
         status_value = tk.StringVar()
-        ttk.Label(body, textvariable=status_value, font=("Segoe UI", 11, "bold"), wraplength=520, justify="left").grid(row=0, column=0, columnspan=3, sticky="w")
-        ttk.Label(body, text=(f"Subscription: {licensing.get_price_text()}, {licensing.TRIAL_DAYS}-day free trial, up to "
-                              f"{licensing.MAX_DEVICES} PCs per subscription. After subscribing, PayPal emails a "
-                              f"subscription ID (starts with I-). Each PC must connect to the internet at least "
-                              f"once every {licensing.OFFLINE_GRACE_DAYS} days."),
-                  wraplength=520, justify="left").grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 12))
-        ttk.Label(body, text="PayPal subscription ID or license code:").grid(row=2, column=0, columnspan=3, sticky="w")
+        ttk.Label(body, textvariable=status_value, font=("Segoe UI", 11, "bold"), wraplength=620, justify="left").grid(row=0, column=0, columnspan=3, sticky="w")
+        ttk.Label(
+            body,
+            text=(
+                f"Base Subscription: {licensing.get_price_text()} (1 PC/Android device + 1 Secondary Screen), "
+                f"{licensing.TRIAL_DAYS}-day free trial. Select 1 or more PC/Android devices below. "
+                f"Internet is only needed when buying or activating a license."
+            ),
+            wraplength=620,
+            justify="left",
+        ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(6, 8))
+
+        # --- Church Plan & Service Selector (unbuilt services are locked) ---
+        plan_frame = ttk.LabelFrame(body, text="Select Your Subscription Period & Services (price shown next to each selection)", padding=(10, 8))
+        plan_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(0, 10))
+        plan_frame.columnconfigure(2, weight=1)
+
+        initial_status = licensing.get_license_status(force=True)
+        is_currently_licensed = initial_status.state == "licensed" and initial_status.days_left > 0
+        rem_days_val = initial_status.days_left if is_currently_licensed else 31
+        rem_label = (
+            f"Add to current license ({initial_status.days_left} day(s) remaining)"
+            if is_currently_licensed
+            else "Add to current license (for remaining paid days)"
+        )
+
+        period_options: dict[str, int] = {
+            "1 month (31 days)": 1,
+            "3 months (92 days)": 3,
+            "6 months (183 days)": 6,
+            "1 year (366 days)": 12,
+            rem_label: 0,
+        }
+        selected_period_label = tk.StringVar(value=rem_label if is_currently_licensed else "1 month (31 days)")
+        ttk.Label(plan_frame, text="Subscription Period:").grid(row=0, column=0, sticky="w")
+        period_combo = ttk.Combobox(plan_frame, textvariable=selected_period_label, values=list(period_options), state="readonly", width=36)
+        period_combo.grid(row=0, column=1, sticky="w", padx=(8, 12))
+        period_price_var = tk.StringVar()
+        ttk.Label(plan_frame, textvariable=period_price_var).grid(row=0, column=2, sticky="w")
+
+        min_main_devices = initial_status.capabilities.max_devices if is_currently_licensed else 1
+        ttk.Label(plan_frame, text="PC / Android Devices on License:").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        main_devices_var = tk.IntVar(value=min_main_devices)
+        dev_spin = ttk.Spinbox(plan_frame, from_=1, to=20, textvariable=main_devices_var, width=5)
+        dev_spin.grid(row=1, column=1, sticky="w", padx=(8, 12), pady=(6, 0))
+        base_price_var = tk.StringVar()
+        ttk.Label(plan_frame, textvariable=base_price_var).grid(row=1, column=2, sticky="w", pady=(6, 0))
+
+        fixed_sec_var = tk.IntVar(value=1)
+        fixed_sub_var = tk.IntVar(value=0)
+        wireless_dev_var = tk.IntVar(value=0)
+        operator_ctrl_var = tk.BooleanVar(value=False)
+        private_scr_var = tk.BooleanVar(value=False)
+
+        sec_price_var = tk.StringVar()
+        sub_price_var = tk.StringVar()
+        wire_price_var = tk.StringVar()
+        op_price_var = tk.StringVar()
+        priv_price_var = tk.StringVar()
+        plan_total_var = tk.StringVar()
+
+        sec_lbl = ttk.Label(plan_frame, text="Fixed Secondary Screens:")
+        sec_lbl.grid(row=2, column=0, sticky="w", pady=(6, 0))
+        sec_spin = ttk.Spinbox(plan_frame, from_=1, to=10, textvariable=fixed_sec_var, width=5)
+        sec_spin.grid(row=2, column=1, sticky="w", padx=(8, 12), pady=(6, 0))
+        ttk.Label(plan_frame, textvariable=sec_price_var).grid(row=2, column=2, sticky="w", pady=(6, 0))
+
+        sub_lbl = ttk.Label(plan_frame, text="Fixed Sub Secondary Screens:")
+        sub_lbl.grid(row=3, column=0, sticky="w", pady=(6, 0))
+        sub_spin = ttk.Spinbox(plan_frame, from_=0, to=10, textvariable=fixed_sub_var, width=5)
+        sub_spin.grid(row=3, column=1, sticky="w", padx=(8, 12), pady=(6, 0))
+        ttk.Label(plan_frame, textvariable=sub_price_var).grid(row=3, column=2, sticky="w", pady=(6, 0))
+
+        wire_lbl = ttk.Label(plan_frame, text="Wireless Secondary Devices:")
+        wire_lbl.grid(row=4, column=0, sticky="w", pady=(6, 0))
+        wire_spin = ttk.Spinbox(plan_frame, from_=0, to=50, textvariable=wireless_dev_var, width=5)
+        wire_spin.grid(row=4, column=1, sticky="w", padx=(8, 12), pady=(6, 0))
+        ttk.Label(plan_frame, textvariable=wire_price_var).grid(row=4, column=2, sticky="w", pady=(6, 0))
+
+        op_chk = ttk.Checkbutton(plan_frame, text="Wireless Operator Remote", variable=operator_ctrl_var)
+        op_chk.grid(row=5, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Label(plan_frame, textvariable=op_price_var).grid(row=5, column=2, sticky="w", pady=(6, 0))
+
+        priv_chk = ttk.Checkbutton(plan_frame, text="Private Screen (Pulpit Monitor)", variable=private_scr_var)
+        priv_chk.grid(row=6, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Label(plan_frame, textvariable=priv_price_var).grid(row=6, column=2, sticky="w", pady=(6, 0))
+
+        ttk.Separator(plan_frame).grid(row=7, column=0, columnspan=3, sticky="ew", pady=(8, 4))
+        ttk.Label(plan_frame, textvariable=plan_total_var, font=("Segoe UI", 10, "bold")).grid(row=8, column=0, columnspan=3, sticky="w", pady=(2, 0))
+        ttk.Label(
+            plan_frame,
+            text=(
+                "Tip: Need to add another PC or Android device to an active license? Select "
+                "'Add to current license' in Subscription Period above and increase the device count — "
+                "you only pay for the remaining days of your current license, and your existing connection "
+                "type and connected devices stay untouched."
+            ),
+            wraplength=600,
+            justify="left",
+        ).grid(row=9, column=0, columnspan=3, sticky="w", pady=(6, 0))
+
+        def selected_capabilities() -> licensing.LicenseCapabilities:
+            try:
+                return licensing.LicenseCapabilities(
+                    max_devices=max(1, int(main_devices_var.get())),
+                    fixed_secondary_screens=int(fixed_sec_var.get()),
+                    fixed_sub_secondary_screens=int(fixed_sub_var.get()),
+                    wireless_devices=int(wireless_dev_var.get()),
+                    wireless_operator_controller=bool(operator_ctrl_var.get()),
+                    private_screen=bool(private_scr_var.get()),
+                ).clamped_to_available_services()
+            except (tk.TclError, ValueError):
+                return licensing.LicenseCapabilities(max_devices=1)
+
+        def selected_months() -> int:
+            return int(period_options.get(selected_period_label.get(), 1))
+
+        def is_remaining_period_selected() -> bool:
+            return selected_months() == 0
+
+        def update_plan_Controls_and_price(*_args) -> None:
+            cfg = licensing.get_pricing_config()
+            rates = cfg["modular_rates_zar"]  # type: ignore[index]
+            avail = cfg["available_services"]  # type: ignore[index]
+            months = selected_months()
+            in_upgrade_mode = is_remaining_period_selected()
+
+            try:
+                dev_cnt = max(1, int(main_devices_var.get()))
+            except (tk.TclError, ValueError):
+                dev_cnt = 1
+            base_mo = int(rates.get("base_zar", 200))
+            unit_dev = int(rates.get("extra_main_device_zar", 75))
+
+            if in_upgrade_mode:
+                cur_devs = initial_status.capabilities.max_devices if is_currently_licensed else 1
+                added_devs = max(0, dev_cnt - cur_devs)
+                rem_days = max(1, rem_days_val)
+                add_cost = round(added_devs * unit_dev * (rem_days / 31.0)) if added_devs > 0 else 0
+                base_price_var.set(
+                    f"= R{add_cost}.00  ({cur_devs} already active; +{added_devs} added × R{unit_dev}.00/mo for {rem_days} day(s))"
+                )
+            else:
+                extra_devs = max(0, dev_cnt - 1)
+                dev_total_mo = base_mo + (extra_devs * unit_dev)
+                if extra_devs > 0:
+                    base_price_var.set(
+                        f"= R{dev_total_mo * months}.00  (1st device R{base_mo}.00/mo + {extra_devs} extra × R{unit_dev}.00/mo)"
+                    )
+                else:
+                    base_price_var.set(f"= R{base_mo * months}.00  (1st device R{base_mo}.00/mo; +R{unit_dev}.00/mo per extra)")
+
+            if not avail.get("extra_secondary_screen"):
+                fixed_sec_var.set(1)
+                sec_spin.configure(state="disabled")
+                sec_price_var.set("1 screen included in Base  (extra screens in development)")
+            else:
+                sec_spin.configure(state="normal")
+                extra_sec = max(0, int(fixed_sec_var.get() or 1) - 1)
+                unit_sec = int(rates.get("extra_secondary_screen_zar", 50))
+                sec_price_var.set(f"= R{extra_sec * unit_sec * max(1, months)}.00  (1 included; +{extra_sec} extra × R{unit_sec}.00/mo)")
+
+            if not avail.get("sub_secondary_screen"):
+                fixed_sub_var.set(0)
+                sub_spin.configure(state="disabled")
+                sub_price_var.set("R0.00  (In Development)")
+            else:
+                sub_spin.configure(state="normal")
+                sub_cnt = max(0, int(fixed_sub_var.get() or 0))
+                unit_sub = int(rates.get("sub_secondary_screen_zar", 50))
+                sub_price_var.set(f"= R{sub_cnt * unit_sub * max(1, months)}.00  ({sub_cnt} × R{unit_sub}.00/mo)")
+
+            if not avail.get("wireless_device"):
+                wireless_dev_var.set(0)
+                wire_spin.configure(state="disabled")
+                wire_price_var.set("R0.00  (In Development)")
+            else:
+                wire_spin.configure(state="normal")
+                wire_cnt = max(0, int(wireless_dev_var.get() or 0))
+                unit_wire = int(rates.get("wireless_device_zar", 25))
+                wire_price_var.set(f"= R{wire_cnt * unit_wire * max(1, months)}.00  ({wire_cnt} × R{unit_wire}.00/mo)")
+
+            if not avail.get("wireless_operator_controller"):
+                operator_ctrl_var.set(False)
+                op_chk.configure(state="disabled")
+                op_price_var.set("R0.00  (In Development)")
+            else:
+                op_chk.configure(state="normal")
+                unit_op = int(rates.get("wireless_operator_controller_zar", 75))
+                op_amt = unit_op * max(1, months) if bool(operator_ctrl_var.get()) else 0
+                op_price_var.set(f"= R{op_amt}.00  (R{unit_op}.00/mo)")
+
+            if not avail.get("private_screen"):
+                private_scr_var.set(False)
+                priv_chk.configure(state="disabled")
+                priv_price_var.set("R0.00  (In Development)")
+            else:
+                priv_chk.configure(state="normal")
+                unit_priv = int(rates.get("private_screen_zar", 50))
+                priv_amt = unit_priv * max(1, months) if bool(private_scr_var.get()) else 0
+                priv_price_var.set(f"= R{priv_amt}.00  (R{unit_priv}.00/mo)")
+
+            caps = selected_capabilities()
+            if in_upgrade_mode:
+                base_caps = initial_status.capabilities if is_currently_licensed else licensing.LicenseCapabilities(max_devices=1)
+                upgrade = licensing.calculate_addon_upgrade_pricing(
+                    base_caps,
+                    caps,
+                    remaining_days=max(1, rem_days_val),
+                    clamp_unbuilt=True,
+                )
+                period_price_var.set(f"Pro-rated for {max(1, rem_days_val)} remaining day(s) of current license")
+                plan_total_var.set(f"Add-On Total to Pay: {upgrade['summary']}")
+                if "subscribe_button" in locals() and subscribe_button.winfo_exists():
+                    subscribe_button.configure(text=f"Add to Current License with Paystack (R{upgrade['total_zar']}.00)")
+            else:
+                pricing = licensing.calculate_license_pricing(caps, billing_months=months, clamp_unbuilt=True)
+                disc_pct = int(pricing["discount_percent"])
+                disc_zar = int(pricing["discount_zar"])
+                if disc_pct > 0:
+                    period_price_var.set(f"{disc_pct}% multi-month discount (−R{disc_zar}.00 saved)")
+                else:
+                    period_price_var.set("Standard monthly rate")
+                plan_total_var.set(f"Total to Pay: {pricing['summary']}")
+                if "subscribe_button" in locals() and subscribe_button.winfo_exists():
+                    subscribe_button.configure(text=f"Subscribe with Paystack (R{pricing['total_zar']}.00)")
+
+        for v in (selected_period_label, main_devices_var, fixed_sec_var, fixed_sub_var, wireless_dev_var, operator_ctrl_var, private_scr_var):
+            v.trace_add("write", update_plan_Controls_and_price)
+
+        ttk.Label(body, text="Paystack subscription code, payment reference, or license code:").grid(row=3, column=0, columnspan=3, sticky="w")
         code_value = tk.StringVar()
         code_entry = ttk.Entry(body, textvariable=code_value, width=60)
-        code_entry.grid(row=3, column=0, sticky="ew", pady=(4, 0))
+        code_entry.grid(row=4, column=0, sticky="ew", pady=(4, 0))
         activate_button = ttk.Button(body, text="Activate")
-        activate_button.grid(row=3, column=1, padx=(8, 0), pady=(4, 0))
+        activate_button.grid(row=4, column=1, padx=(8, 0), pady=(4, 0))
         machine_id = licensing.get_machine_id()
-        ttk.Label(body, text=f"This PC's ID: {machine_id}").grid(row=4, column=0, sticky="w", pady=(12, 0))
+        ttk.Label(body, text=f"This PC's ID: {machine_id}").grid(row=5, column=0, sticky="w", pady=(12, 0))
 
         def copy_machine_id() -> None:
-            """What: Copy a license request with the church name and this PC's ID.
+            """What: Copy a license request with the church name, this PC's ID, and selected plan.
 
             Why included: Manual license codes are bound to one PC and issued per church.
             Where used: The Copy ID button.
             Returns: None.
             """
             church_name = str(get_branding_settings().get("church_name") or "").strip()
+            effective_status = initial_status if is_currently_licensed else licensing.LicenseStatus(
+                state="licensed",
+                days_left=max(1, rem_days_val),
+                subscription_id="CURRENT",
+                valid_until="",
+                capabilities=licensing.LicenseCapabilities(max_devices=1),
+            )
             root.clipboard_clear()
-            root.clipboard_append(licensing.build_license_request(church_name, machine_id))
-            messagebox.showinfo("License", "Copied the church name and this PC's ID. Paste them into an email or WhatsApp message to PewVista.", parent=dialog)
+            root.clipboard_append(
+                licensing.build_license_request(
+                    church_name,
+                    machine_id,
+                    capabilities=selected_capabilities(),
+                    billing_months=max(1, selected_months()),
+                    current_status=effective_status if is_remaining_period_selected() else None,
+                )
+            )
+            messagebox.showinfo("License", "Copied the church name, this PC's ID, and your selected subscription plan. Paste them into an email or WhatsApp message to PewVista.", parent=dialog)
 
-        ttk.Button(body, text="Copy ID", command=copy_machine_id).grid(row=4, column=1, padx=(8, 0), pady=(12, 0))
+        ttk.Button(body, text="Copy ID", command=copy_machine_id).grid(row=5, column=1, padx=(8, 0), pady=(12, 0))
 
         def show_manual_license_steps() -> None:
-            """What: Explain how to get and activate a license without PayPal.
+            """What: Explain how to get and activate a license with Paystack or direct payment.
 
-            Why included: Churches paying by EFT need clear steps to receive a license code.
+            Why included: Churches need clear steps to pay on Paystack or receive a license code.
             Where used: The How to Get a License button.
             Returns: None.
             """
             messagebox.showinfo("How to Get a License", (
-                f"Price: {licensing.get_price_text()} per church, covering up to {licensing.MAX_DEVICES} PCs.\n\n"
-                "1. Pay PewVista by EFT. Email pewvista52@gmail.com for the banking details.\n"
-                "2. On this PC, click Copy ID. It copies the church name and this PC's ID.\n"
-                "3. Paste it into an email or WhatsApp message to PewVista, with your proof of payment. "
-                f"For a second PC, repeat steps 2 and 3 on that PC.\n"
-                "4. PewVista replies with a license code for each PC.\n"
-                "5. Paste the code into the box above and click Activate. No internet is needed.\n\n"
-                "The red NOT LICENSED marking disappears immediately. Before the code expires, "
-                "pay again and you will receive a new code."), parent=dialog)
+                f"Base price: {licensing.get_price_text()} (1 PC/Android device + 1 Secondary Screen; select 1 or more devices above).\n\n"
+                "Option A — Paystack Online Payment / Subscription:\n"
+                "1. Select your Subscription Period and number of PC/Android devices above, connect to the internet, and click 'Subscribe with Paystack' below.\n"
+                "2. Enter the Paystack subscription code (SUB_...) or payment reference in the box above and click Activate.\n\n"
+                "Option B — Direct Payment / License Code:\n"
+                "1. Select your Subscription Period and number of PC/Android devices above and click Copy ID (it copies your church name, PC ID, and chosen plan).\n"
+                "2. Pay via Paystack or EFT (email pewvista52@gmail.com if you need assistance) and send the copied text with your payment reference to PewVista.\n"
+                "3. Paste the license code PewVista sends you into the box above and click Activate.\n\n"
+                "Adding Devices to Your Current License:\n"
+                "• You can add extra PC/Android devices at any time for the remaining days of your paid license.\n"
+                "• Choose 'Remaining on current license' in Subscription Period, increase the device count, and only pay the pro-rated difference for your remaining days.\n"
+                "• Your existing connection type and connected devices are never disturbed."), parent=dialog)
 
-        ttk.Button(body, text="How to Get a License", command=show_manual_license_steps).grid(row=4, column=2, padx=(8, 0), pady=(12, 0))
+        ttk.Button(body, text="How to Get a License", command=show_manual_license_steps).grid(row=5, column=2, padx=(8, 0), pady=(12, 0))
 
         def refresh_status() -> None:
             """What: Show the current license state in the dialog and window title.
@@ -2792,7 +3034,11 @@ def build_ui() -> tk.Tk:
             status = licensing.get_license_status(force=True)
             if status.state == "licensed":
                 until = status.valid_until[:10]
-                text = f"Licensed ({status.subscription_id}). Valid on this PC until {until}; renews automatically while online."
+                price_part = f" [{status.pricing_summary}]" if status.pricing_summary else ""
+                text = (
+                    f"Licensed ({status.subscription_id}){price_part}. Valid offline on this PC until {until}; "
+                    f"includes {status.capabilities.summary_text()}."
+                )
             elif status.state == "developer":
                 text = status.message
             elif status.state == "trial":
@@ -2820,15 +3066,15 @@ def build_ui() -> tk.Tk:
                 messagebox.showinfo("License", message, parent=dialog)
 
         def activate() -> None:
-            """What: Activate this PC with the entered subscription ID or license code.
+            """What: Activate this PC with the entered Paystack code, reference, or license code.
 
-            Why included: The church enters what PayPal or PewVista sent them.
+            Why included: The church enters what Paystack or PewVista sent them.
             Where used: The Activate button and Enter key.
             Returns: None; work runs in the background.
             """
             value = code_value.get().strip()
             if not value:
-                messagebox.showerror("License", "Enter the PayPal subscription ID or license code.", parent=dialog)
+                messagebox.showerror("License", "Enter the Paystack subscription code, payment reference, or license code.", parent=dialog)
                 return
             activate_button.configure(state="disabled")
             start_background_task("license_activate", lambda: licensing.activate_subscription(value),
@@ -2849,32 +3095,106 @@ def build_ui() -> tk.Tk:
                 on_error=lambda error: finish_action(error=error))
 
         def open_subscribe_page() -> None:
-            """What: Open the PayPal subscription page in the web browser.
+            """What: Open the Paystack payment page or initialize a checkout session in the browser.
 
-            Why included: Payment happens on PayPal, never inside the app.
-            Where used: The Subscribe button.
+            Why included: Payment happens securely on Paystack, never inside the app.
+            Where used: The Subscribe with Paystack button.
             Returns: None.
             """
             import webbrowser
-            webbrowser.open(licensing.PAYPAL_SUBSCRIBE_URL)
+            caps = selected_capabilities()
+            months = selected_months()
+            in_upgrade = is_remaining_period_selected()
+            if in_upgrade:
+                upgrade = licensing.calculate_addon_upgrade_pricing(
+                    initial_status.capabilities,
+                    caps,
+                    remaining_days=initial_status.days_left,
+                    clamp_unbuilt=True,
+                )
+                if int(upgrade["delta_monthly_zar"]) <= 0:
+                    messagebox.showinfo(
+                        "Add to Current License",
+                        "Increase the PC / Android Devices count above your current active count first to add extra devices for your remaining days.",
+                        parent=dialog,
+                    )
+                    return
+            if licensing.get_license_server_url():
+                email = simpledialog.askstring(
+                    "Subscribe with Paystack",
+                    "Enter your church's email address for the Paystack receipt and subscription:",
+                    parent=dialog,
+                )
+                if not email or not email.strip():
+                    return
+                church_name = str(get_branding_settings().get("church_name") or "").strip()
+
+                def on_checkout_ready(reply: dict[str, object]) -> None:
+                    auth_url = str(reply.get("authorization_url") or "")
+                    ref = str(reply.get("reference") or "")
+                    if ref:
+                        code_value.set(ref)
+                    if auth_url:
+                        webbrowser.open(auth_url)
+                        finish_action(
+                            f"Paystack checkout opened in your browser.\n\n"
+                            f"Payment Reference: {ref}\n"
+                            "After completing payment on Paystack, click Activate to license this PC."
+                        )
+                    else:
+                        finish_action(error=licensing.LicenseError("The license server did not return a Paystack checkout link."))
+
+                start_background_task(
+                    "paystack_checkout",
+                    lambda: licensing.create_paystack_checkout(
+                        email.strip(),
+                        church_name=church_name,
+                        capabilities=caps,
+                        billing_months=max(1, months),
+                        upgrade_remaining_days=initial_status.days_left if in_upgrade else 0,
+                        current_capabilities=initial_status.capabilities if in_upgrade else None,
+                    ),
+                    on_success=on_checkout_ready,
+                    on_error=lambda error: finish_action(error=error),
+                )
+                return
+            paystack_url = licensing.get_paystack_subscribe_url()
+            if paystack_url:
+                webbrowser.open(paystack_url)
 
         activate_button.configure(command=activate)
         code_entry.bind("<Return>", lambda _event: activate())
         buttons = ttk.Frame(body)
-        buttons.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(16, 0))
-        subscribe_button = ttk.Button(buttons, text=f"Subscribe with PayPal ({licensing.get_price_text()})", command=open_subscribe_page)
+        buttons.grid(row=6, column=0, columnspan=3, sticky="ew", pady=(16, 0))
+        subscribe_button = ttk.Button(buttons, text=f"Subscribe with Paystack ({licensing.get_price_text()})", command=open_subscribe_page)
         subscribe_button.pack(side="left")
-        if not licensing.PAYPAL_SUBSCRIBE_URL:
+        if not (licensing.get_paystack_subscribe_url() or licensing.get_license_server_url()):
             subscribe_button.configure(state="disabled")
         ttk.Button(buttons, text="Close", command=dialog.destroy).pack(side="right")
         remove_button = ttk.Button(buttons, text="Remove from this PC", command=remove_license)
         remove_button.pack(side="right", padx=(0, 8))
+        update_plan_Controls_and_price()
         refresh_status()
+
+        def apply_live_pricing(_cfg: object = None) -> None:
+            if not dialog.winfo_exists():
+                return
+            update_plan_Controls_and_price()
+            subscribe_button.configure(
+                state="normal" if (licensing.get_paystack_subscribe_url() or licensing.get_license_server_url()) else "disabled",
+            )
+
+        if getattr(sys, "frozen", False):
+            start_background_task(
+                "live_pricing_fetch",
+                licensing.fetch_live_pricing_config,
+                on_success=apply_live_pricing,
+                on_error=lambda _err: None,
+            )
         code_entry.focus_set()
 
     help_menu = tk.Menu(menu_bar, tearoff=0)
     help_menu.add_command(label="Church Name, Background and Icon...", command=open_branding_editor)
-    help_menu.add_command(label="License and Subscription...", command=open_license_dialog)
     help_menu.add_command(label="Operating Manual",
         command=lambda: show_text_document(root, "Operating Manual", get_app_base_path() / "OPERATING_MANUAL.txt"))
     help_menu.add_command(label="Future Plans",
@@ -3013,9 +3333,10 @@ def build_ui() -> tk.Tk:
         font_value_factory=current_overlay_font_value,
         get_music_licenses=get_music_licenses,
     )
-    if getattr(sys, "frozen", False):
-        # Start OBS while the operator is still preparing, so the first live item is instant.
-        root.after(2000, mirror_controller.prewarm_secondary_output)
+    if getattr(sys, "frozen", False) or os.environ.get("PEWVISTA_PREWARM_OBS", "1") != "0":
+        # Start OBS in the background right after the window opens (both in source and installed runs)
+        # so turning on the secondary screen is instant instead of taking 20-30 seconds to cold-start.
+        root.after(1500, mirror_controller.prewarm_secondary_output)
 
     for column_index, title in enumerate(top_titles):
         frame = tk.LabelFrame(container, text=title, bg=THEMES["Light"]["panel_bg"], padx=16, pady=16, bd=1, relief="solid", font=(selected_font_family.get(), selected_font_size.get(), FONT_STYLES[selected_font_style.get()]), labelanchor="n")
@@ -4317,6 +4638,7 @@ def build_ui() -> tk.Tk:
 
     history_menu.add_command(label="Open History", command=open_history_window)
     menu_bar.add_command(label="Members", command=open_members_window)
+    menu_bar.add_command(label="License and Subscription", command=open_license_dialog)
     menu_bar.add_cascade(label="Help", menu=help_menu)
 
     apply_theme(root, container, top_sections, bottom_section, menu_widgets, selected_theme.get())

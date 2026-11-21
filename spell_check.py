@@ -188,11 +188,11 @@ class SpellCheckController:
         self.closed = False
         self.menu: tk.Menu | None = None
         self.menu_token = 0
-        for sequence in ("<FocusIn>", "<KeyRelease>", "<<Modified>>", "<<Paste>>", "<<Cut>>"):
+        for sequence in ("<KeyRelease>", "<<Paste>>", "<<Cut>>"):
             root.bind_all(sequence, self._schedule, add="+")
         root.bind_all("<Button-3>", self._popup, add="+")
         root.bind_all("<Destroy>", self._destroyed, add="+")
-        self.poll_id = root.after(50, self._poll)
+        self.poll_id = root.after(150, self._poll)
 
     @staticmethod
     def editable(widget: tk.Misc) -> bool:
@@ -225,21 +225,22 @@ class SpellCheckController:
         return widget.get("1.0", "end-1c") if isinstance(widget, tk.Text) else widget.get()
 
     def _schedule(self, event) -> None:
-        """What: Debounce checks after focus, typing, cut, or paste events.
+        """What: Debounce checks after typing, cut, or paste events on multiline Text widgets.
 
-        Why included: Existing modified-event handlers and text undo history must remain intact.
+        Why included: Existing modified-event handlers and text undo history must remain intact,
+        and single-line Entry widgets only need spell/grammar checks when right-clicked.
         Where used: App-wide additive Tk event bindings.
         Returns: None.
         """
         widget = event.widget
-        if self.closed or not self.editable(widget):
+        if self.closed or not isinstance(widget, tk.Text) or not self.editable(widget):
             return
         if event.type == tk.EventType.VirtualEvent and self.root.focus_get() is not widget:
             return
         previous = self.pending.pop(widget, None)
         if previous:
             self.root.after_cancel(previous)
-        self.pending[widget] = self.root.after(450, lambda: self._check(widget))
+        self.pending[widget] = self.root.after(650, lambda: self._check(widget))
 
     def _check(self, widget: tk.Misc) -> None:
         """What: Capture current text and submit a worker lookup.
@@ -340,12 +341,12 @@ class SpellCheckController:
                 language = self.engine.language(snapshot) if mode == "auto" else mode
                 self.results.put(("language", widget, snapshot, token, language, mode))
                 if operation == "errors":
-                    result = self.engine.errors(value, language)
+                    result = self.engine.errors(value, language) if isinstance(widget, tk.Text) else []
                 elif operation == "suggestions":
                     result = [] if self.engine.known(value, language) else self.engine.suggestions(value, language)
                 else:
                     self.engine.ignore(value, language)
-                    result = self.engine.errors(snapshot, language)
+                    result = self.engine.errors(snapshot, language) if isinstance(widget, tk.Text) else []
                 self.results.put((operation, widget, snapshot, token, result, mode))
             except Exception as error:
                 log_exception("spellcheck.worker", error)
@@ -374,7 +375,7 @@ class SpellCheckController:
                         self.grammar_cache.pop(widget, None)
                         if isinstance(widget, tk.Text):
                             widget.tag_remove(GRAMMAR_TAG, "1.0", "end")
-                    elif self.grammar_failure is None:
+                    elif self.grammar_failure is None and isinstance(widget, tk.Text):
                         cached = self.grammar_cache.get(widget)
                         if cached is None or cached[0] != snapshot:
                             self._check_grammar(widget, snapshot)
@@ -407,7 +408,7 @@ class SpellCheckController:
         except queue.Empty:
             pass
         if not self.closed:
-            self.poll_id = self.root.after(50, self._poll)
+            self.poll_id = self.root.after(150, self._poll)
 
     def _popup(self, event) -> str | None:
         """What: Offer standard editing actions and spelling/grammar corrections on right-click.

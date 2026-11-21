@@ -46,7 +46,7 @@ To manage subscriptions, PewVista and the developer keep the limited licensing i
 
 PewVista operates primarily offline. It uses the internet only for the following:
 
-- Licensing: when a PC is activated with a PayPal subscription, and about once a day afterwards while online, PewVista sends the subscription ID, the PC ID, the computer's name, and the PewVista version to the PewVista license service to confirm the subscription. License codes issued for direct payment need no internet connection.
+- Licensing: when a church opens the License window to purchase or activate a subscription online, PewVista retrieves the current subscription pricing from the online release feed and, for online Paystack activation, sends the subscription or payment identifier, the PC ID, the computer's name, and the PewVista version to the PewVista license service to issue the license. Once activated, the license works offline until its expiry date.
 - Update checks: about once a day, PewVista checks whether a newer version is available. Only the request itself is sent; no personal information is included.
 - OBS Studio: during installation, or the first time the secondary screen starts, PewVista may download OBS Studio from its official website if it is not already on the computer.
 - Features chosen by an authorized user that download content from an external source, such as importing supported files from a web address.

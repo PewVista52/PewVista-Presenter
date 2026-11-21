@@ -1,3 +1,29 @@
 {
-  "price": "R200.00 per month"
+  "price": "R200.00 per month",
+  "paystack_subscribe_url": "https://paystack.shop/pay/jsrvobdbbw",
+  "license_server_url": "",
+  "modular_rates_zar": {
+    "base_zar": 200,
+    "extra_main_device_zar": 75,
+    "extra_secondary_screen_zar": 50,
+    "sub_secondary_screen_zar": 50,
+    "wireless_device_zar": 25,
+    "wireless_operator_controller_zar": 75,
+    "private_screen_zar": 50
+  },
+  "duration_discounts_percent": {
+    "1_month": 0,
+    "3_months": 5,
+    "6_months": 10,
+    "12_months": 15
+  },
+  "available_services": {
+    "extra_secondary_screen": false,
+    "sub_secondary_screen": false,
+    "wireless_device": false,
+    "wireless_operator_controller": false,
+    "private_screen": false
+  }
 }
+
+

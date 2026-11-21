@@ -835,11 +835,16 @@ def build_preparation_tab(tab_frame: tk.Frame, context: dict[str, object]) -> No
             except Exception:
                 pass
         clear_preview_gif_cache()
+        bg_cache_key = (str(candidate), int(preview_width), int(preview_height))
+        cached_static = state.get("cached_static_bg")
+        if isinstance(cached_static, tuple) and len(cached_static) == 2 and cached_static[0] == bg_cache_key:
+            return cached_static[1].copy()
         try:
             with Image.open(candidate) as source_image:
                 loaded = fit_background_image(source_image, (preview_width, preview_height))
                 setattr(loaded, "_background_path", str(candidate))
-                return loaded
+                state["cached_static_bg"] = (bg_cache_key, loaded)
+                return loaded.copy()
         except Exception:
             blank = Image.new("RGB", (preview_width, preview_height), "#000000")
             setattr(blank, "_background_path", str(candidate))
@@ -884,7 +889,7 @@ def build_preparation_tab(tab_frame: tk.Frame, context: dict[str, object]) -> No
         refresh_details()
         render_selected_block_preview()
 
-    def schedule_preview_refresh(delay_ms: int = 160) -> None:
+    def schedule_preview_refresh(delay_ms: int = 260) -> None:
         """What: Debounce editor changes into one delayed Preparation preview refresh.
 
         Why included: Typing emits rapid Modified events that should not each trigger image rendering.
